@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Master Mobility OS | Centro de Control Maestro Satélite</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root {
+    --gold: #e6b800;
+    --red: #d32f2f;
+    --orange: #ff6b00;
+    --dark: #050505;
+    --card: #111;
+    --success: #00ff88;
+    --blue: #3b82f6;
+    --info: #0dcaf0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+body { background: var(--dark); color: white; overflow-x: hidden; padding-bottom: 40px; }
+
+header { background: rgba(0,0,0,0.95); padding: 15px 25px; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; height: 70px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); }
+.container { padding: 25px 15px; max-width: 1300px; margin: auto; }
+
+.form-panel { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid #222; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.input-group { margin-bottom: 15px; }
+.input-group label { display: block; font-size: 0.8rem; color: var(--gold); margin-bottom: 8px; font-family: 'Orbitron'; font-weight: bold; text-transform: uppercase; }
+input, select, textarea { width: 100%; padding: 12px; background: #000; color: white; border: 1px solid #333; border-radius: 10px; font-size: 15px; }
+input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: none; }
+
+.btn { padding: 14px; border: none; border-radius: 10px; font-family: 'Orbitron'; font-weight: 900; width: 100%; cursor: pointer; transition: 0.3s; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.btn-gold { background: var(--gold); color: black; }
+.btn-blue { background: var(--blue); color: white; }
+.btn-red { background: var(--red); color: white; }
+.btn-green { background: var(--success); color: black; }
+
+/* DISEÑO RESPONSIVO CORREGIDO PARA MÓVILES */
+.main-split { display: grid; grid-template-columns: 1fr; gap: 25px; }
+.audit-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; }
+
+@media (min-width: 800px) {
+    .main-split { grid-template-columns: 1fr 1.2fr; }
+}
+
+.login-box { max-width: 400px; margin: 12vh auto 0 auto; background: var(--card); padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+
+/* Área de firma manuscrita digital */
+.signature-wrapper { background: #fff; border-radius: 10px; padding: 5px; margin-top: 10px; position: relative; border: 2px solid #333; }
+canvas { width: 100%; height: 220px; background: #fff; touch-action: none; border-radius: 8px; }
+
+.link-box { background: #000; padding: 12px; border-radius: 8px; border: 1px solid #333; font-size: 0.85rem; color: var(--info); word-break: break-all; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; }
+.copy-btn { background: none; border: none; color: var(--gold); cursor: pointer; font-weight: bold; font-family: 'Orbitron'; padding-left: 10px; flex-shrink: 0; }
+
+/* Estilos de historial detallado */
+.metric-box { background: #000; padding: 15px; border-radius: 10px; border-left: 4px solid var(--gold); margin-bottom: 10px; }
+.missed-day-tag { background: rgba(211, 47, 47, 0.15); border: 1px solid var(--red); color: #ff8888; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 5px; font-family: monospace; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; }
+.badge { padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; font-family: 'Orbitron'; display: inline-block; }
+
+/* Modal Ver Documento */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; padding: 15px; }
+.modal-content { background: var(--card); padding: 30px; border-radius: 15px; border: 1px solid var(--gold); max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+<div id="panel-login-admin" style="display: none;">
+    <div class="login-box">
+        <h2 style="font-family:'Orbitron'; color:var(--red); margin-bottom:15px;"><i class="fa-solid fa-shield-halved"></i> ACCESO MAESTRO</h2>
+        <p style="color:#aaa; font-size:0.9rem; margin-bottom:25px;">Módulo administrativo satélite independiente.</p>
+        <form onsubmit="verificarPasswordAdmin(event)">
+            <input type="password" id="pass-modulo" placeholder="Contraseña Maestra" style="text-align:center; letter-spacing:5px; margin-bottom:20px;" required>
+            <button type="submit" class="btn btn-red">AUTENTICAR PANEL</button>
+        </form>
+    </div>
+</div>
+
+<div id="panel-admin" style="display: none;">
+    <header>
+        <div style="font-family:'Orbitron'; color:var(--gold); font-size:1.1rem;"><i class="fa-solid fa-cubes"></i> CONTROL MAESTRO</div>
+        <div style="color: var(--info); font-size: 0.7rem; font-family: 'Orbitron';">MASTER MOBILITY</div>
+    </header>
+    
+    <div class="container">
+        <div class="form-panel" style="border-top: 3px solid var(--red);">
+            <h2 style="font-size:1.1rem; color:var(--red); margin-bottom:15px;"><i class="fa-solid fa-dumpster-fire"></i> SISTEMA DE DEPURACIÓN (STORAGE)</h2>
+            <p style="color:#aaa; font-size:0.85rem; margin-bottom:20px;">Elimina permanentemente archivos pesados de transacciones para liberar almacenamiento.</p>
+            
+            <form id="form-limpieza" onsubmit="guardarConfigLimpieza(event)">
+                <div class="main-split" style="margin-bottom: 15px;">
+                    <div class="input-group">
+                        <label>Limpieza en Segundo Plano</label>
+                        <select id="clean-status">
+                            <option value="off">DESACTIVADA (Manual)</option>
+                            <option value="on">ACTIVADA (Automática)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Retención Obligatoria</label>
+                        <select id="clean-days">
+                            <option value="15">Eliminar fotos > 15 días</option>
+                            <option value="30" selected>Eliminar fotos > 30 días</option>
+                            <option value="60">Eliminar fotos > 60 días</option>
+                            <option value="90">Eliminar fotos > 90 días</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="main-split" style="gap: 15px;">
+                    <button type="submit" class="btn btn-blue"><i class="fa-solid fa-floppy-disk"></i> APLICAR</button>
+                    <button type="button" class="btn btn-red" onclick="ejecutarPurgaManualInmediata()"><i class="fa-solid fa-trash-can"></i> BORRAR TODO AHORA</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="main-split">
+            <div class="form-panel">
+                <h2 style="font-size:1.1rem; margin-bottom:15px;"><i class="fa-solid fa-file-signature"></i> REDACCIÓN DE ACUERDOS</h2>
+                <form onsubmit="crearAcuerdoFirma(event)">
+                    <div class="input-group">
+                        <label>Conductor Destinatario</label>
+                        <select id="select-chofer-contrato" required></select>
+                    </div>
+                    <div class="input-group">
+                        <label>Cuerpo Legal (Editable)</label>
+                        <textarea id="contrato-cuerpo" rows="10" placeholder="Escribe los términos y condiciones del acuerdo aquí..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-gold"><i class="fa-solid fa-link"></i> GENERAR ENLACE</button>
+                </form>
+                <div id="wrapper-link-acuerdo" style="display:none;">
+                    <div class="link-box">
+                        <span id="txt-link-acuerdo"></span>
+                        <button class="copy-btn" onclick="copiarLinkAcuerdo()"><i class="fa-regular fa-copy"></i> COPIAR</button>
+                    </div>
+                    <p style="color:var(--success); font-size:0.75rem; margin-top:10px;">¡Generado exitosamente! Selecciona al conductor en la Auditoría para ver sus enlaces.</p>
+                </div>
+            </div>
+
+            <div class="form-panel" style="border-top: 3px solid var(--info);">
+                <h2 style="font-size:1.1rem; color:var(--info); margin-bottom:15px;"><i class="fa-solid fa-magnifying-glass-dollar"></i> AUDITORÍA DE PILOTO</h2>
+                <div class="input-group">
+                    <label>Selecciona Conductor</label>
+                    <select id="select-chofer-historial" onchange="auditarConductorSeleccionado()"></select>
+                </div>
+                
+                <div id="auditoria-vacia" style="color:#555; text-align:center; padding:40px 0;">
+                    <i class="fa-solid fa-chart-pie" style="font-size:3rem; margin-bottom:10px;"></i>
+                    <p>Selecciona un piloto para auditar.</p>
+                </div>
+
+                <div id="auditoria-datos" style="display:none;">
+                    <h3 style="font-family:'Orbitron'; font-size:0.85rem; color:var(--gold); margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;"><i class="fa-solid fa-file-contract"></i> CONTRATOS Y ACUERDOS LEGALES</h3>
+                    <div id="container-contratos-historial" style="max-height: 250px; overflow-y: auto; background:#050505; padding:10px; border-radius:10px; border:1px solid #222; margin-bottom: 20px;"></div>
+
+                    <div class="audit-metrics">
+                        <div class="metric-box">
+                            <p style="font-size:0.7rem; color:#888; font-family:'Orbitron';">DEUDA REGULAR</p>
+                            <h3 id="aud-deuda-reg" style="color:var(--red); font-size:1.3rem;">$0.00</h3>
+                        </div>
+                        <div class="metric-box" style="border-left-color: var(--info);">
+                            <p style="font-size:0.7rem; color:#888; font-family:'Orbitron';">SALDO ARREGLO</p>
+                            <h3 id="aud-deuda-arr" style="color:var(--info); font-size:1.3rem;">$0.00</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-box" style="border-left-color: var(--success); margin-bottom:20px;">
+                        <p style="font-size:0.75rem; color:#888; font-family:'Orbitron';">TOTAL REPORTADO (APROBADO)</p>
+                        <h3 id="aud-total-pagado" style="color:var(--success); font-size:1.3rem;">$0.00</h3>
+                    </div>
+
+                    <h3 style="font-family:'Orbitron'; font-size:0.85rem; color:var(--gold); margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;"><i class="fa-solid fa-calendar-xmark"></i> DÍAS FALTANTES POR PAGAR</h3>
+                    <div id="container-dias-faltantes" style="max-height: 250px; overflow-y: auto; background:#000; padding:10px; border-radius:10px; border:1px solid #222;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="panel-conductor-firma" style="display: none;">
+    <div style="max-width: 650px; margin: 30px auto; padding: 15px;">
+        <div class="form-panel" id="box-firma-legal" style="padding: 25px; border: 2px solid var(--gold);">
+            <h2 style="font-family:'Orbitron'; text-align:center; font-size:1.1rem; margin-bottom:20px;"><i class="fa-solid fa-file-contract"></i> REVISIÓN Y FIRMA</h2>
+            
+            <div id="documento-legal-texto" style="background:#000; border:1px solid #333; padding:15px; border-radius:10px; font-size:0.9rem; line-height:1.6; white-space:pre-wrap; max-height:300px; overflow-y:auto; margin-bottom:25px; color:#ddd; text-align:justify;"></div>
+            
+            <div class="input-group">
+                <label style="color:var(--info); text-align:center; display:block; font-size:0.8rem;">DIBUJA TU FIRMA EN EL RECUADRO INFERIOR</label>
+                <div class="signature-wrapper">
+                    <canvas id="signature-canvas"></canvas>
+                </div>
+                <button type="button" class="btn btn-red" style="padding:8px; font-size:0.75rem; margin-top:10px; width:auto; margin-left:auto;" onclick="limpiarLienzoFirma()"><i class="fa-solid fa-eraser"></i> REPETIR FIRMA</button>
+            </div>
+
+            <button type="button" class="btn btn-green" id="btn-aceptar-acuerdo" style="margin-top:25px; font-size:1rem;" onclick="procesarEnvioContratoFirmado()"><i class="fa-solid fa-check-double"></i> ACEPTAR Y FIRMAR</button>
+        </div>
+
+        <div class="form-panel" id="box-firma-exito" style="display:none; text-align:center; padding:40px 20px; border-color:var(--success);">
+            <i class="fa-solid fa-circle-check" style="font-size: 4rem; color: var(--success); margin-bottom:20px;"></i>
+            <h2 style="font-family:'Orbitron'; color:var(--success); margin-bottom:15px; font-size:1.2rem;">CONTRATO PROCESADO</h2>
+            <p style="color:#eee; line-height:1.6; font-size:0.95rem;">Tu confirmación y firma manuscrita han sido registradas de forma segura.</p>
+            <p style="color:#888; font-size:0.8rem; margin-top:15px; font-style:italic;">Copia archivada en Master Mobility OS. Ya puedes cerrar esta pestaña.</p>
+        </div>
+    </div>
+</div>
+
+<div id="modal-ver-contrato" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="color:var(--gold); text-align:center; margin-bottom: 20px; font-size:1.2rem;"><i class="fa-solid fa-file-signature"></i> DOCUMENTO FIRMADO</h2>
+        <div id="ver-cuerpo-contrato" style="white-space:pre-wrap; font-size:0.85rem; line-height:1.6; background:#000; padding:15px; border-radius:10px; border:1px solid #333; color:#ccc;"></div>
+        
+        <div style="margin-top:25px; text-align:center; border-top: 1px dashed #333; padding-top: 20px;">
+            <p style="color:var(--success); font-family:'Orbitron'; font-size:0.8rem; font-weight:bold; margin-bottom:10px;">FIRMA OFICIAL DEL CONDUCTOR:</p>
+            <img id="ver-firma-img" src="" style="background:white; border-radius:10px; width:100%; max-width:350px; border:3px solid #fff;">
+            <p id="ver-fecha-firma" style="color:#888; font-size:0.75rem; margin-top:15px; font-family: monospace;"></p>
+        </div>
+        <button class="btn btn-red" style="margin-top:25px;" onclick="document.getElementById('modal-ver-contrato').style.display='none'">CERRAR DOCUMENTO</button>
+    </div>
+</div>
+
+<script>
+// Configuración exacta de tu base de datos de Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyB2tSowCQwfncdpjQOYEYOEKLrDaeeap48",
+    authDomain: "personal-car-19faa.firebaseapp.com",
+    projectId: "personal-car-19faa",
+    storageBucket: "personal-car-19faa.firebasestorage.app",
+    messagingSenderId: "172539533131",
+    appId: "1:172539533131:web:6d56ca847239e989ca7ace"
+};
+
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let appData = { conductores: [], vehiculos: [], pagos: [] };
+let currentTgConfig = { token: '', chat: '' };
+let signaturePad = null;
+let contratoUrlId = new URLSearchParams(window.location.search).get('contract');
+
+window.addEventListener('DOMContentLoaded', () => {
+    db.collection('sistema').doc('config_portal').onSnapshot(doc => {
+        if (doc.exists) {
+            currentTgConfig.token = doc.data().tgToken || '';
+            currentTgConfig.chat = doc.data().tgChat || '';
+        }
+    });
+
+    if (contratoUrlId) {
+        document.getElementById('panel-conductor-firma').style.display = 'block';
+        inicializarLienzoFirmaDriver();
+    } else {
+        document.getElementById('panel-login-admin').style.display = 'block';
+    }
+});
+
+function verificarPasswordAdmin(e) {
+    e.preventDefault();
+    if (document.getElementById('pass-modulo').value === "507Admin") {
+        document.getElementById('panel-login-admin').style.display = 'none';
+        document.getElementById('panel-admin').style.display = 'block';
+        conectarBaseDatosMaestra();
+    } else {
+        alert("Contraseña incorrecta de Administrador.");
+    }
+}
+
+function conectarBaseDatosMaestra() {
+    db.collection('vehiculos').onSnapshot(snap => {
+        appData.vehiculos = [];
+        snap.forEach(doc => appData.vehiculos.push({ id: doc.id, ...doc.data() }));
+        if(document.getElementById('select-chofer-historial').value) auditarConductorSeleccionado();
+    });
+
+    db.collection('pagos').onSnapshot(snap => {
+        appData.pagos = [];
+        snap.forEach(doc => appData.pagos.push({ id: doc.id, ...doc.data() }));
+        if(document.getElementById('select-chofer-historial').value) auditarConductorSeleccionado();
+    });
+
+    db.collection('conductores').onSnapshot(snap => {
+        appData.conductores = [];
+        snap.forEach(doc => appData.conductores.push({ id: doc.id, ...doc.data() }));
+        
+        const selContrato = document.getElementById('select-chofer-contrato');
+        const selHistorial = document.getElementById('select-chofer-historial');
+        const valContrato = selContrato.value;
+        const valHistorial = selHistorial.value;
+        
+        const opcionesHtml = '<option value="">Seleccione un conductor...</option>' + 
+            appData.conductores.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+            
+        selContrato.innerHTML = opcionesHtml;
+        selHistorial.innerHTML = opcionesHtml;
+        
+        if (valContrato) selContrato.value = valContrato;
+        if (valHistorial) selHistorial.value = valHistorial;
+        if(valHistorial) auditarConductorSeleccionado();
+    });
+
+    db.collection('sistema').doc('limpieza_config').get().then(doc => {
+        if(doc.exists) {
+            document.getElementById('clean-status').value = doc.data().status || 'off';
+            document.getElementById('clean-days').value = doc.data().days || '30';
+            if(doc.data().status === 'on') {
+                ejecutarDepuracionAutomaticaFondo(parseInt(doc.data().days || 30));
+            }
+        }
+    });
+}
+
+function auditarConductorSeleccionado() {
+    const id = document.getElementById('select-chofer-historial').value;
+    const panelVacio = document.getElementById('auditoria-vacia');
+    const panelDatos = document.getElementById('auditoria-datos');
+    const containerDias = document.getElementById('container-dias-faltantes');
+    const containerContratos = document.getElementById('container-contratos-historial');
+
+    if (!id) {
+        panelVacio.style.display = 'block';
+        panelDatos.style.display = 'none';
+        return;
+    }
+
+    panelVacio.style.display = 'none';
+    panelDatos.style.display = 'block';
+
+    const c = appData.conductores.find(x => x.id === id);
+    if (!c) return;
+
+    db.collection('contratos_arreglos_firmas').where('choferId', '==', id).get().then(snap => {
+        containerContratos.innerHTML = '';
+        if(snap.empty) {
+            containerContratos.innerHTML = '<p style="color:#666; font-size:0.8rem; text-align:center;">No hay contratos generados para este conductor.</p>';
+        } else {
+            snap.forEach(doc => {
+                const d = doc.data();
+                const urlUnica = `${window.location.origin}${window.location.pathname}?contract=${doc.id}`;
+                
+                if(d.firmado) {
+                    containerContratos.innerHTML += `
+                        <div style="background:#0a0a0a; padding:15px; border:1px solid var(--success); border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <div>
+                                <span class="badge bg-green" style="background:var(--success); color:black;"><i class="fa-solid fa-check"></i> FIRMADO</span>
+                                <p style="font-size:0.75rem; color:#888; margin-top:5px;">Emitido: ${d.fechaCreacion || 'N/A'}</p>
+                            </div>
+                            <button class="btn btn-blue" style="padding:8px 12px; font-size:0.7rem; width:auto;" onclick="verContratoFirmado('${doc.id}')"><i class="fa-solid fa-eye"></i> VER</button>
+                        </div>`;
+                } else {
+                    containerContratos.innerHTML += `
+                        <div style="background:#0a0a0a; padding:15px; border:1px solid var(--orange); border-radius:8px; margin-bottom:10px;">
+                            <span class="badge" style="background:var(--orange); color:white;"><i class="fa-solid fa-clock"></i> PENDIENTE DE FIRMA</span>
+                            <p style="font-size:0.75rem; color:#888; margin:5px 0 10px 0;">Emitido: ${d.fechaCreacion || 'N/A'}</p>
+                            <div style="display:flex; gap:5px;">
+                                <input type="text" value="${urlUnica}" readonly style="flex:1; padding:8px; font-size:0.75rem; background:#000; border:1px solid #333; color:var(--info);">
+                                <button class="btn btn-gold" style="padding:8px; font-size:0.7rem; width:auto;" onclick="navigator.clipboard.writeText('${urlUnica}'); alert('Enlace copiado. ¡Envíalo al chofer!');"><i class="fa-solid fa-copy"></i></button>
+                            </div>
+                        </div>`;
+                }
+            });
+        }
+    });
+
+    const deudReg = parseFloat(c.deuda) || 0;
+    const arrTot = parseFloat(c.arreglo_deuda_total) || 0;
+    const arrPag = parseFloat(c.arreglo_pagado) || 0;
+    const deudArr = (c.arreglo_activo === 'si' && arrTot > arrPag) ? (arrTot - arrPag) : 0;
+    
+    const misPagosValidos = appData.pagos.filter(p => p.conductor_id === id && p.estado === 'aprobado');
+    const totalRecaudado = misPagosValidos.reduce((acc, p) => acc + parseFloat(p.monto_normal !== undefined ? p.monto_normal : p.monto), 0);
+
+    document.getElementById('aud-deuda-reg').innerText = `$${deudReg.toFixed(2)}`;
+    document.getElementById('aud-deuda-arr').innerText = `$${deudArr.toFixed(2)}`;
+    document.getElementById('aud-total-pagado').innerText = `$${totalRecaudado.toFixed(2)}`;
+
+    containerDias.innerHTML = '';
+    if(!c.auto_asignado || c.auto_asignado === 'Ninguno') {
+        containerDias.innerHTML = '<p style="color:#666; text-align:center; font-size:0.8rem; padding:10px;">Este conductor no registra vehículo asignado para auditar asistencia.</p>';
+        return;
+    }
+
+    const auto = appData.vehiculos.find(v => v.placa === c.auto_asignado);
+    const tarifaDiaria = auto && auto.tarifa ? parseFloat(auto.tarifa) : 25;
+    
+    let fechaInicio = c.ts ? new Date(c.ts) : new Date();
+    let fechaFin = new Date();
+    fechaInicio.setHours(0,0,0,0);
+    fechaFin.setHours(0,0,0,0);
+
+    let diasFaltantesConteo = 0;
+    let indexDate = new Date(fechaInicio);
+
+    while (indexDate <= fechaFin) {
+        const stringFecha = indexDate.toLocaleDateString();
+        const reportoPago = appData.pagos.some(p => p.conductor_id === id && p.fecha === stringFecha && (p.estado === 'aprobado' || p.estado === 'pendiente'));
+        
+        if (!reportoPago) {
+            diasFaltantesConteo++;
+            containerDias.innerHTML += `
+                <div class="missed-day-tag">
+                    <span><i class="fa-solid fa-calendar-minus"></i> ${stringFecha}</span>
+                    <span style="font-weight:bold; color:var(--red);">Faltó (-$${tarifaDiaria})</span>
+                </div>
+            `;
+        }
+        indexDate.setDate(indexDate.getDate() + 1);
+    }
+
+    if (diasFaltantesConteo === 0) {
+        containerDias.innerHTML = '<p style="color:var(--success); text-align:center; font-size:0.85rem; padding:15px;"><i class="fa-solid fa-check-double"></i> Récord perfecto. No registra días pendientes de pago.</p>';
+    }
+}
+
+async function guardarConfigLimpieza(e) {
+    e.preventDefault();
+    const status = document.getElementById('clean-status').value;
+    const days = document.getElementById('clean-days').value;
+    try {
+        await db.collection('sistema').doc('limpieza_config').set({ status, days: parseInt(days) });
+        alert("Configuración de mantenimiento guardada exitosamente.");
+    } catch(err) { alert(err.message); }
+}
+
+async function ejecutarPurgaManualInmediata() {
+    if(!confirm("⚠️ ADVERTENCIA CRÍTICA:\n¿Estás seguro de que deseas ELIMINAR TODAS las imágenes de pagos, alertas y checklists almacenadas en el servidor ahora mismo?\nEsta acción liberará espacio de forma inmediata y no se puede deshacer.")) return;
+    
+    const carpetas = ['pagos', 'alertas_imagenes', 'checklist'];
+    let borrados = 0;
+    
+    for (let carpeta of carpetas) {
+        try {
+            const listRef = storage.ref(carpeta);
+            const res = await listRef.listAll();
+            for (let item of res.items) {
+                await item.delete();
+                borrados++;
+            }
+        } catch(e) { console.log("Carpeta vacía o sin acceso: " + carpeta); }
+    }
+    alert(`Mantenimiento manual finalizado. Se eliminaron con éxito ${borrados} archivos pesados del servidor.`);
+}
+
+async function ejecutarDepuracionAutomaticaFondo(diasLimite) {
+    const msLimite = diasLimite * 24 * 60 * 60 * 1000;
+    const tiempoCorte = Date.now() - msLimite;
+
+    db.collection('alertas_temporizador').where('createdAt', '<', tiempoCorte).get().then(snap => {
+        snap.forEach(async (doc) => {
+            if(doc.data().foto) { try{ await storage.refFromURL(doc.data().foto).delete(); }catch(e){} }
+            await db.collection('alertas_temporizador').doc(doc.id).delete();
+        });
+    });
+}
+
+async function crearAcuerdoFirma(e) {
+    e.preventDefault();
+    const choferId = document.getElementById('select-chofer-contrato').value;
+    const cuerpo = document.getElementById('contrato-cuerpo').value;
+    
+    if(!choferId) return alert("Selecciona un piloto destinatario.");
+
+    const chofer = appData.conductores.find(c => c.id === choferId);
+
+    try {
+        const docRef = await db.collection('contratos_arreglos_firmas').add({
+            choferId: choferId,
+            choferNombre: chofer ? chofer.nombre : 'Conductor',
+            cuerpo: cuerpo,
+            firmado: false,
+            timestamp: Date.now(),
+            fechaCreacion: new Date().toLocaleDateString()
+        });
+
+        const link = `${window.location.origin}${window.location.pathname}?contract=${docRef.id}`;
+        document.getElementById('txt-link-acuerdo').innerText = link;
+        document.getElementById('wrapper-link-acuerdo').style.display = 'block';
+        document.getElementById('contrato-cuerpo').value = '';
+        
+        if(document.getElementById('select-chofer-historial').value === choferId) {
+            auditarConductorSeleccionado();
+        }
+    } catch(err) { alert(err.message); }
+}
+
+function copiarLinkAcuerdo() {
+    const link = document.getElementById('txt-link-acuerdo').innerText;
+    navigator.clipboard.writeText(link).then(() => {
+        alert("Enlace legal copiado al portapapeles. Envíaselo al conductor por WhatsApp.");
+    });
+}
+
+function verContratoFirmado(docId) {
+    db.collection('contratos_arreglos_firmas').doc(docId).get().then(doc => {
+        if (doc.exists) {
+            const d = doc.data();
+            document.getElementById('ver-cuerpo-contrato').innerText = d.cuerpo;
+            document.getElementById('ver-firma-img').src = d.firmaBase64 || '';
+            document.getElementById('ver-fecha-firma').innerText = `Firmado electrónicamente el: ${d.fechaFirma || 'Desconocido'}`;
+            document.getElementById('modal-ver-contrato').style.display = 'flex';
+        }
+    });
+}
+
+let datosContratoConductorLocal = null;
+
+function inicializarLienzoFirmaDriver() {
+    db.collection('contratos_arreglos_firmas').doc(contratoUrlId).get().then(doc => {
+        if(!doc.exists || doc.data().firmado) {
+            document.getElementById('box-firma-legal').style.display = 'none';
+            document.getElementById('box-firma-exito').style.display = 'block';
+            return;
+        }
+
+        const data = doc.data();
+        datosContratoConductorLocal = data;
+        document.getElementById('documento-legal-texto').innerText = data.cuerpo;
+
+        const canvas = document.getElementById('signature-canvas');
+        signaturePad = new SignaturePad(canvas, {
+            penColor: 'rgb(0, 0, 0)',
+            backgroundColor: 'rgb(255, 255, 255)'
+        });
+
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            signaturePad.clear();
+        }
+        window.onresize = resizeCanvas;
+        resizeCanvas();
+    });
+}
+
+function limpiarLienzoFirma() {
+    if(signaturePad) signaturePad.clear();
+}
+
+async function procesarEnvioContratoFirmado() {
+    if(!signaturePad || signaturePad.isEmpty()) {
+        return alert("❌ ERROR: No puedes aceptar el acuerdo sin antes estampar tu firma manuscrita en el recuadro blanco.");
+    }
+
+    const btn = document.getElementById('btn-aceptar-acuerdo');
+    btn.disabled = true;
+    btn.innerText = "PROCESANDO FIRMA DIGITAL...";
+
+    try {
+        const firmaBase64 = signaturePad.toDataURL("image/png");
+
+        await db.collection('contratos_arreglos_firmas').doc(contratoUrlId).update({
+            firmado: true,
+            firmaBase64: firmaBase64,
+            fechaFirma: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString()
+        });
+
+        const nombreChofer = datosContratoConductorLocal ? datosContratoConductorLocal.choferNombre : 'Un conductor';
+        enviarAlertaTelegramMaestra(`✍️ *CONTRATO FIRMADO DIGITALMENTE*\nEl conductor *${nombreChofer}* ha aceptado y firmado su acuerdo en la plataforma satélite.`);
+
+        document.getElementById('box-firma-legal').style.display = 'none';
+        document.getElementById('box-firma-exito').style.display = 'block';
+    } catch(e) {
+        alert("Error de procesamiento: " + e.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ACEPTAR Y FIRMAR ACUERDO';
+    }
+}
+
+function enviarAlertaTelegramMaestra(msg) {
+    if (currentTgConfig.token && currentTgConfig.chat) {
+        fetch(`https://api.telegram.org/bot${currentTgConfig.token}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: currentTgConfig.chat, text: msg, parse_mode: 'Markdown' })
+        }).catch(e => console.log(e));
+    }
+}
+</script>
+</body>
+</html>
