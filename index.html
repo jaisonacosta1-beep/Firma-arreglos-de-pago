@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -122,11 +123,11 @@ canvas { width: 100%; height: 220px; background: #fff; touch-action: none; borde
                 <form onsubmit="crearAcuerdoFirma(event)">
                     <div class="input-group">
                         <label>Conductor Destinatario</label>
-                        <select id="select-chofer-contrato" required></select>
+                        <select id="select-chofer-contrato" required onchange="cargarPlantillaContrato()"></select>
                     </div>
                     <div class="input-group">
                         <label>Cuerpo Legal (Editable)</label>
-                        <textarea id="contrato-cuerpo" rows="10" placeholder="Escribe los términos y condiciones del acuerdo aquí..." required></textarea>
+                        <textarea id="contrato-cuerpo" rows="10" placeholder="Selecciona un conductor y el contrato se generará automáticamente aquí..." required></textarea>
                     </div>
                     <button type="submit" class="btn btn-gold"><i class="fa-solid fa-link"></i> GENERAR ENLACE</button>
                 </form>
@@ -187,6 +188,12 @@ canvas { width: 100%; height: 220px; background: #fff; touch-action: none; borde
             <div id="documento-legal-texto" style="background:#000; border:1px solid #333; padding:15px; border-radius:10px; font-size:0.9rem; line-height:1.6; white-space:pre-wrap; max-height:300px; overflow-y:auto; margin-bottom:25px; color:#ddd; text-align:justify;"></div>
             
             <div class="input-group">
+                <div style="background: rgba(211, 47, 47, 0.15); border: 1px solid var(--red); border-left: 4px solid var(--red); padding: 12px; margin-bottom: 15px; border-radius: 5px;">
+                    <p style="color: #ffaaaa; font-size: 0.85rem; font-weight: bold; text-align: center;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> IMPORTANTE: La firma plasmada a continuación debe ser IDÉNTICA a la que aparece en su Cédula de Identidad.
+                    </p>
+                </div>
+
                 <label style="color:var(--info); text-align:center; display:block; font-size:0.8rem;">DIBUJA TU FIRMA EN EL RECUADRO INFERIOR</label>
                 <div class="signature-wrapper">
                     <canvas id="signature-canvas"></canvas>
@@ -216,7 +223,53 @@ canvas { width: 100%; height: 220px; background: #fff; touch-action: none; borde
             <img id="ver-firma-img" src="" style="background:white; border-radius:10px; width:100%; max-width:350px; border:3px solid #fff;">
             <p id="ver-fecha-firma" style="color:#888; font-size:0.75rem; margin-top:15px; font-family: monospace;"></p>
         </div>
-        <button class="btn btn-red" style="margin-top:25px;" onclick="document.getElementById('modal-ver-contrato').style.display='none'">CERRAR DOCUMENTO</button>
+        <div style="display:flex; gap: 15px; margin-top:25px;">
+            <button class="btn btn-blue" id="btn-descarga-pdf" onclick="descargarContratoPDF()"><i class="fa-solid fa-download"></i> DESCARGAR PDF</button>
+            <button class="btn btn-red" onclick="document.getElementById('modal-ver-contrato').style.display='none'"><i class="fa-solid fa-xmark"></i> CERRAR</button>
+        </div>
+    </div>
+</div>
+
+<div id="pdf-export-content" style="display:none; padding: 50px; color: #111; background: #ffffff; width: 850px; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; position: relative;">
+    
+    <div style="border-bottom: 3px solid #e6b800; padding-bottom: 15px; margin-bottom: 35px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1 style="font-family: 'Orbitron', sans-serif; font-size: 26px; margin: 0; color: #000; letter-spacing: 1px;">MASTER MOBILITY OS</h1>
+            <p style="margin: 5px 0 0 0; font-size: 13px; color: #555; text-transform: uppercase;">Centro de Control Maestro Satélite • División Legal</p>
+        </div>
+        <div style="text-align: right;">
+            <p style="margin: 0; font-size: 10px; color: #888;">CÓDIGO DE DOCUMENTO:</p>
+            <p style="margin: 0; font-size: 14px; font-weight: bold; font-family: monospace; color: #d32f2f;">DOC-<span id="pdf-doc-id">PENDIENTE</span></p>
+        </div>
+    </div>
+
+    <h2 style="text-align:center; font-size: 18px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Acuerdo Legal y Términos de Asignación</h2>
+    
+    <div id="pdf-cuerpo" style="white-space: pre-wrap; font-size: 14px; line-height: 1.8; text-align: justify; color: #222; margin-bottom: 60px;"></div>
+    
+    <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
+        <div style="text-align: center; width: 40%;">
+            <div style="height: 80px; border-bottom: 1px solid #000; margin-bottom: 10px; display:flex; align-items:flex-end; justify-content:center;">
+                <span style="font-family: 'Orbitron', sans-serif; color: #ccc; font-size: 22px; margin-bottom: 10px;">M. M. OS</span>
+            </div>
+            <p style="font-weight: bold; margin: 0; font-size: 13px;">Representante Legal</p>
+            <p style="font-size: 11px; color: #666; margin: 2px 0 0 0;">Master Mobility OS</p>
+        </div>
+        
+        <div style="text-align: center; width: 40%;">
+            <div style="height: 80px; border-bottom: 1px solid #000; margin-bottom: 10px; display:flex; align-items:flex-end; justify-content:center; padding-bottom: 5px;">
+                <img id="pdf-firma-export" src="" style="max-width: 100%; max-height: 75px; object-fit: contain;">
+            </div>
+            <p style="font-weight: bold; margin: 0; font-size: 13px;">Firma Oficial del Conductor</p>
+            <p id="pdf-nombre-conductor" style="font-size: 11px; color: #666; margin: 2px 0 0 0; text-transform: uppercase; font-weight: bold;"></p>
+        </div>
+    </div>
+    
+    <div style="margin-top: 70px; border-top: 1px solid #ddd; padding-top: 15px; position: relative;">
+        <p id="pdf-fecha-export" style="text-align:center; font-size: 11px; margin: 0; color: #555; font-family: monospace;"></p>
+        <p style="text-align:center; font-size: 10px; margin: 8px 0 0 0; color: #999;">
+            Este documento ha sido generado, validado y firmado electrónicamente mediante encriptación.<br>Posee plena validez legal a través del ecosistema Master Mobility OS.
+        </p>
     </div>
 </div>
 
@@ -454,6 +507,107 @@ async function ejecutarDepuracionAutomaticaFondo(diasLimite) {
     });
 }
 
+function cargarPlantillaContrato() {
+    const choferId = document.getElementById('select-chofer-contrato').value;
+    if (!choferId) return;
+
+    const chofer = appData.conductores.find(c => c.id === choferId);
+    if (!chofer) return;
+
+    const cedula = chofer.cedula || "_______________"; 
+    const placa = chofer.auto_asignado && chofer.auto_asignado !== 'Ninguno' ? chofer.auto_asignado : "_______________";
+
+    const plantilla = `Conste por el presente documento, el acuerdo celebrado entre MASTER MOBILITY (en adelante "La Empresa") y el señor(a) ${chofer.nombre}, portador del documento de identidad ${cedula} (en adelante "El Conductor").
+
+PRIMERO: OBJETO DEL ACUERDO
+La Empresa asigna al Conductor el vehículo con placa ${placa} bajo las condiciones y tarifas establecidas en el sistema.
+
+SEGUNDO: RESPONSABILIDADES
+1. El Conductor se compromete a mantener el vehículo en óptimas condiciones físicas y mecánicas.
+2. Cumplir estrictamente con la cuota diaria establecida a través de la plataforma.
+3. Reportar cualquier avería o incidente de manera inmediata al Centro de Control Maestro.
+
+TERCERO: SANCIONES
+El incumplimiento de pagos por un periodo consecutivo, o el mal uso comprobado de la unidad, facultará a La Empresa para la retención inmediata del vehículo sin derecho a reclamo.
+
+Al firmar este documento, el conductor declara haber leído, comprendido y aceptado en su totalidad las cláusulas expuestas.`;
+
+    document.getElementById('contrato-cuerpo').value = plantilla;
+}
+
+function verContratoFirmado(docId) {
+    db.collection('contratos_arreglos_firmas').doc(docId).get().then(doc => {
+        if (doc.exists) {
+            const d = doc.data();
+            
+            // Llenar Modal Visual
+            document.getElementById('ver-cuerpo-contrato').innerText = d.cuerpo;
+            document.getElementById('ver-firma-img').src = d.firmaBase64 || '';
+            document.getElementById('ver-fecha-firma').innerText = `Firmado electrónicamente el: ${d.fechaFirma || 'Desconocido'}`;
+            
+            // Llenar Plantilla Oculta para PDF
+            document.getElementById('pdf-cuerpo').innerText = d.cuerpo;
+            document.getElementById('pdf-firma-export').src = d.firmaBase64 || '';
+            document.getElementById('pdf-nombre-conductor').innerText = d.choferNombre.toUpperCase();
+            document.getElementById('pdf-fecha-export').innerText = `TIMESTAMP DE AUDITORÍA: ${d.fechaFirma || 'Desconocido'} | REF-ID: ${doc.id}`;
+            document.getElementById('pdf-doc-id').innerText = doc.id.substring(0,8).toUpperCase();
+            
+            // Mostrar Modal
+            document.getElementById('modal-ver-contrato').style.display = 'flex';
+        }
+    });
+}
+
+function descargarContratoPDF() {
+    const originalElement = document.getElementById('pdf-export-content');
+    const clone = originalElement.cloneNode(true);
+
+    // CORRECCIÓN PARA DISPOSITIVOS MÓVILES
+    // En vez de mandarlo a -9999px (lo cual hace que el celular lo descarte de la memoria),
+    // lo posicionamos en el top 0 pero oculto por debajo de la interfaz modal actual usando z-index.
+    clone.style.display = 'block';
+    clone.style.position = 'absolute';
+    clone.style.top = '0';
+    clone.style.left = '0';
+    clone.style.zIndex = '-9999';
+
+    document.body.appendChild(clone);
+
+    // Cambiar estado del botón para dar feedback de que no está colgado
+    const btn = document.getElementById('btn-descarga-pdf');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> GENERANDO...';
+    btn.disabled = true;
+
+    const opt = {
+        margin:       0.4, 
+        filename:     `Acuerdo_MasterMobility_${document.getElementById('pdf-doc-id').innerText}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            letterRendering: true,
+            scrollY: 0, // CRÍTICO: Fuerza a capturar desde arriba, ignorando si el usuario hizo scroll
+            scrollX: 0,
+            windowWidth: 900 // CRÍTICO: Fuerza un área de renderizado para evitar cortes en el celular
+        }, 
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(clone).save().then(() => {
+        document.body.removeChild(clone);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }).catch(err => {
+        console.error("Error al generar el PDF:", err);
+        if(document.body.contains(clone)) document.body.removeChild(clone);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert("Ocurrió un error al generar el PDF. Inténtalo de nuevo.");
+    });
+}
+
 async function crearAcuerdoFirma(e) {
     e.preventDefault();
     const choferId = document.getElementById('select-chofer-contrato').value;
@@ -488,18 +642,6 @@ function copiarLinkAcuerdo() {
     const link = document.getElementById('txt-link-acuerdo').innerText;
     navigator.clipboard.writeText(link).then(() => {
         alert("Enlace legal copiado al portapapeles. Envíaselo al conductor por WhatsApp.");
-    });
-}
-
-function verContratoFirmado(docId) {
-    db.collection('contratos_arreglos_firmas').doc(docId).get().then(doc => {
-        if (doc.exists) {
-            const d = doc.data();
-            document.getElementById('ver-cuerpo-contrato').innerText = d.cuerpo;
-            document.getElementById('ver-firma-img').src = d.firmaBase64 || '';
-            document.getElementById('ver-fecha-firma').innerText = `Firmado electrónicamente el: ${d.fechaFirma || 'Desconocido'}`;
-            document.getElementById('modal-ver-contrato').style.display = 'flex';
-        }
     });
 }
 
