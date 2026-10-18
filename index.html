@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-950 text-slate-100">
 <head>
@@ -339,6 +339,23 @@
         </div>
       </div>
 
+      <!-- PERSONALIZACIÓN DE MARQUESINA Y DJ EN VIVO -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+        <div class="flex items-center gap-2.5 w-full sm:w-auto">
+          <span class="text-xl">🎙️</span>
+          <div>
+            <h4 class="text-xs font-bold text-white">Texto de Barra Inferior / DJ en Vivo</h4>
+            <p class="text-[11px] text-slate-400">Edita el mensaje que corre en la parte inferior del proyector</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-2/3">
+          <input type="text" id="input-marquee-live" value="Bienvenidos al Evento • Envía tus fotos y dedicatorias para que salgan en pantalla gigante • ¡Que siga la fiesta!" oninput="updateMarqueeLiveText(this.value)" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-amber-300 focus:border-amber-400 outline-none font-medium">
+          <button onclick="saveMarqueeBroadcast()" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shrink-0 transition">
+            Actualizar
+          </button>
+        </div>
+      </div>
+
       <!-- Tarjetas de Resumen & Seguros Activos -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
@@ -528,12 +545,16 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Distintivo en Foto</label>
-                  <input type="text" id="input-media-badge" placeholder="Ej: Foto en Vivo, Mesa 5..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 outline-none" oninput="updateLivePreview()">
+                  <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Distintivo en Foto / Video</label>
+                  <input type="text" id="input-media-badge" placeholder="Ej: Video en Vivo, Mesa 5..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 outline-none" oninput="updateLivePreview()">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Título / Dedicatoria corta</label>
-                  <input type="text" id="input-media-title" placeholder="Ej: ¡Los novios en la pista!" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 outline-none" oninput="updateLivePreview()">
+                  <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Dedicatoria / Título</label>
+                  <input type="text" id="input-media-title" placeholder="Ej: ¡Los novios en su primer baile!" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 outline-none" oninput="updateLivePreview()">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Firma / De parte de</label>
+                  <input type="text" id="input-media-signature" placeholder="Ej: Mesa 4 • Familia Martínez" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 outline-none" oninput="updateLivePreview()">
                 </div>
               </div>
             </div>
@@ -653,23 +674,29 @@
       <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/60 pointer-events-none z-10"></div>
     </div>
 
-    <div id="projector-video-wrap" class="absolute inset-0 w-full h-full hidden bg-black z-20 flex items-center justify-center">
-      <video id="projector-video" class="w-full h-full max-w-full max-h-full object-contain" playsinline preload="auto"></video>
+    <!-- CONTENEDOR DE VIDEO CON FONDO DIFUMINADO AMBIENTAL -->
+    <div id="projector-video-wrap" class="absolute inset-0 w-full h-full hidden bg-black z-20 flex items-center justify-center overflow-hidden">
+      <!-- Video de fondo difuminado (para que no se vea negro en videos verticales) -->
+      <video id="projector-video-bg" class="absolute inset-0 w-full h-full object-cover blur-3xl scale-125 opacity-60" playsinline muted preload="auto"></video>
+      <!-- Video principal nítido -->
+      <video id="projector-video" class="relative z-10 w-full h-full max-w-full max-h-full object-contain shadow-2xl" playsinline preload="auto"></video>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/50 pointer-events-none z-20"></div>
     </div>
 
-    <div id="projector-text-wrap" class="relative z-30 w-full max-w-6xl px-4 sm:px-8 md:px-12 py-6 flex flex-col items-center justify-center text-center transition-all duration-700">
-      <div class="space-y-4 sm:space-y-6 w-full">
+    <!-- DEDICATORIAS EN PANTALLA (FOTO, TEXTO Y VIDEO) -->
+    <div id="projector-text-wrap" class="relative z-30 w-full max-w-6xl px-6 sm:px-10 md:px-14 py-8 flex flex-col items-center justify-center text-center transition-all duration-700 pointer-events-none">
+      <div class="space-y-4 sm:space-y-6 w-full flex flex-col items-center">
         <div>
-          <span id="proj-badge" class="inline-block rounded-full fluid-proj-badge font-cinzel font-black uppercase tracking-widest border border-amber-500/50 bg-amber-950/50 text-amber-300 backdrop-blur-md shadow-2xl transition-all">
+          <span id="proj-badge" class="inline-block rounded-full fluid-proj-badge font-cinzel font-black uppercase tracking-widest border border-amber-500/50 bg-amber-950/70 text-amber-300 backdrop-blur-md shadow-2xl transition-all">
             🎂 Dedicatoria de Cumpleaños
           </span>
         </div>
 
-        <h2 id="proj-message" class="fluid-proj-message font-serif text-white font-extrabold text-shadow-gold px-2 break-words">
+        <h2 id="proj-message" class="fluid-proj-message font-serif text-white font-extrabold text-shadow-gold px-4 break-words leading-relaxed tracking-wide">
           ¡Felicidades en tu día especial!
         </h2>
 
-        <p id="proj-signature" class="fluid-proj-signature font-sans font-semibold text-amber-200/90 tracking-wide text-shadow-subtle px-2">
+        <p id="proj-signature" class="fluid-proj-signature font-sans font-semibold text-amber-200/90 tracking-widest text-shadow-subtle px-4 mt-2">
           — Familia y Amigos —
         </p>
       </div>
@@ -681,7 +708,7 @@
         <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
         <span class="text-[10px] sm:text-xs uppercase font-extrabold tracking-widest text-amber-400 shrink-0">EN VIVO</span>
         <div class="overflow-hidden whitespace-nowrap w-full">
-          <p id="projector-marquee" class="inline-block text-[11px] sm:text-sm font-semibold text-slate-300 animate-marquee">
+          <p id="projector-marquee" class="inline-block text-[11px] sm:text-sm font-semibold text-slate-300 animate-marquee tracking-wider">
             Bienvenidos al Evento • Envía tus fotos y dedicatorias para que salgan en pantalla gigante • ¡Que siga la fiesta!
           </p>
         </div>
@@ -867,6 +894,7 @@
       guestUploadType: 'image',
       guestPhotoData: null,
       sessionId: null,
+      marqueeText: 'Bienvenidos al Evento • Envía tus fotos y dedicatorias para que salgan en pantalla gigante • ¡Que siga la fiesta!',
       peer: null,
       peerConn: null
     };
@@ -1067,6 +1095,7 @@
         action: action,
         slides: state.slides,
         currentIndex: state.currentIndex,
+        marqueeText: state.marqueeText,
         timestamp: Date.now()
       };
 
@@ -1126,9 +1155,29 @@
       if (typeof data.currentIndex === 'number') {
         state.currentIndex = data.currentIndex;
       }
+      if (data.marqueeText) {
+        state.marqueeText = data.marqueeText;
+        const marqEl = document.getElementById('projector-marquee');
+        if (marqEl) marqEl.innerText = state.marqueeText;
+      }
 
       renderQueueList();
       renderSlide();
+    }
+
+    function updateMarqueeLiveText(val) {
+      state.marqueeText = val;
+      const marq = document.getElementById('projector-marquee');
+      if (marq) marq.innerText = val;
+    }
+
+    function saveMarqueeBroadcast() {
+      const val = document.getElementById('input-marquee-live').value.trim();
+      if (val) {
+        state.marqueeText = val;
+        broadcastSync('update_marquee', state.slides);
+        showToast('🎙️ Mensaje de marquesina actualizado en pantalla.');
+      }
     }
 
     /* -------------------------------------------------------------
@@ -1691,10 +1740,11 @@
         mediaContainer.classList.remove('hidden');
         const badge = document.getElementById('input-media-badge').value.trim() || (type === 'video' ? '🎬 Clip en Vivo' : '📷 Foto en Vivo');
         const title = document.getElementById('input-media-title').value.trim() || '¡Momento Especial del Evento!';
+        const signature = document.getElementById('input-media-signature').value.trim();
 
         previewBadge.innerText = badge;
         previewMessage.innerText = title;
-        previewSignature.innerText = '';
+        previewSignature.innerText = signature ? `— ${signature} —` : '';
 
         if (state.tempMediaData) {
           if (state.tempMediaType === 'video') {
@@ -1754,6 +1804,7 @@
 
         const badge = document.getElementById('input-media-badge').value.trim() || (type === 'video' ? '🎬 Video' : '📷 Foto');
         const title = document.getElementById('input-media-title').value.trim() || '¡Momento del Evento!';
+        const signature = document.getElementById('input-media-signature').value.trim() || 'Evento en Vivo';
 
         newSlide = {
           id: 'slide-' + Date.now(),
@@ -1762,12 +1813,13 @@
           badge,
           title,
           message: title,
-          signature: 'Evento en Vivo',
+          signature,
           duration: (state.tempMediaType === 'video') ? (state.videoTrimDuration * 1000) : state.slideDuration
         };
 
         document.getElementById('input-file-media').value = '';
         document.getElementById('input-media-url').value = '';
+        document.getElementById('input-media-signature').value = '';
         document.getElementById('file-upload-prompt').innerText = 'Haz clic para elegir Foto o Video corto';
         state.tempMediaData = null;
         state.tempMediaType = null;
@@ -1851,6 +1903,7 @@
       const imgWrap = document.getElementById('projector-image-wrap');
       const vidWrap = document.getElementById('projector-video-wrap');
       const videoEl = document.getElementById('projector-video');
+      const videoBgEl = document.getElementById('projector-video-bg');
       const textWrap = document.getElementById('projector-text-wrap');
 
       const badgeEl = document.getElementById('proj-badge');
@@ -1859,14 +1912,24 @@
 
       clearInterval(videoTimeCheckInterval);
 
+      // El texto siempre se actualiza (tanto para texto, foto como video)
+      badgeEl.innerText = slide.badge || '';
+      msgEl.innerText = slide.message || slide.title || '';
+      signEl.innerText = slide.signature ? `— ${slide.signature} —` : '';
+      textWrap.classList.remove('hidden');
+
       if (slide.type === 'video') {
         imgWrap.classList.add('hidden');
-        textWrap.classList.add('hidden');
         vidWrap.classList.remove('hidden');
 
         videoEl.src = slide.url;
+        videoBgEl.src = slide.url;
+
         videoEl.currentTime = 0;
+        videoBgEl.currentTime = 0;
+
         videoEl.play().catch(() => {});
+        videoBgEl.play().catch(() => {});
 
         // Seguro de duración: cortar y pasar al cumplir los segundos seleccionados
         const maxSec = state.videoTrimDuration;
@@ -1880,12 +1943,8 @@
       } else {
         vidWrap.classList.add('hidden');
         videoEl.pause();
+        videoBgEl.pause();
         imgWrap.classList.remove('hidden');
-        textWrap.classList.remove('hidden');
-
-        badgeEl.innerText = slide.badge || '';
-        msgEl.innerText = slide.message || slide.title || '';
-        signEl.innerText = slide.signature ? `— ${slide.signature} —` : '';
 
         if (slide.type === 'image') {
           const nextLayer = state.activeImageLayer === 'a' ? 'b' : 'a';
