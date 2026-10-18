@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-950 text-slate-100">
 <head>
@@ -16,6 +16,9 @@
 
   <!-- Librería QR Code oficial para generar el QR directo en el navegador -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- PeerJS CDN: Conexión P2P directa en tiempo real entre Laptop y Proyector (Misma Red Wi-Fi o Internet) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
   <!-- Firebase SDKs (Compat v8) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -259,7 +262,13 @@
     <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
       <div class="hidden lg:flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-full text-[11px]">
         <span id="nav-sync-indicator" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span id="nav-sync-label" class="text-slate-300 font-medium">Red Local</span>
+        <span id="nav-sync-label" class="text-slate-300 font-medium">Sincronizando...</span>
+      </div>
+
+      <!-- Indicador de Enlace P2P con el Proyector -->
+      <div id="p2p-badge-container" class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-full text-[11px]">
+        <span id="p2p-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+        <span id="p2p-status-text" class="text-slate-300 font-mono text-[10px]">Proyector: Esperando enlace</span>
       </div>
 
       <div class="bg-slate-950 p-0.5 sm:p-1 rounded-xl border border-slate-800 flex text-xs">
@@ -839,12 +848,12 @@
           duration: 6000
         }
       ],
-      pendingModeration: [], // Cola de espera para aprobar
-      requireApproval: true,  // Si está activo, nada sale sin que le des clic
+      pendingModeration: [],
+      requireApproval: true,
       currentIndex: 0,
       isPlaying: true,
       slideDuration: 7000,
-      videoTrimDuration: 20, // Segundos máximos por video
+      videoTrimDuration: 20,
       activeView: 'admin',
       selectedAddType: 'text',
       tempMediaData: null,
@@ -856,25 +865,43 @@
       isDedicatedProjectorLink: false,
       activeImageLayer: 'a',
       guestUploadType: 'image',
-      guestPhotoData: null
+      guestPhotoData: null,
+      sessionId: null,
+      peer: null,
+      peerConn: null
     };
 
     const localChannel = new BroadcastChannel('eventcast_pro_channel');
     const mediaBlobCache = new Map();
     let qrCodeInstance = null;
-
     let timerInterval = null;
     let timerProgress = 0;
     let videoTimeCheckInterval = null;
     let telegramPollingInterval = null;
 
+    // Generador o recuperador de identificador de sala para emparejar laptop y proyector
+    function getOrCreateSessionId() {
+      let sId = localStorage.getItem('eventcast_room_session');
+      if (!sId) {
+        sId = 'ev-' + Math.random().toString(36).substring(2, 8);
+        localStorage.setItem('eventcast_room_session', sId);
+      }
+      return sId;
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
       const isProjectorMode = params.get('mode') === 'projector' || params.get('view') === 'display';
       const isGuestMode = params.get('mode') === 'guest';
+      const sessionParam = params.get('room');
+
+      if (sessionParam) {
+        state.sessionId = sessionParam;
+      } else {
+        state.sessionId = getOrCreateSessionId();
+      }
 
       if (isGuestMode) {
-        // Muestra la vista limpia para el invitado
         document.getElementById('admin-navbar').classList.add('hidden');
         document.getElementById('admin-view').classList.add('hidden');
         document.getElementById('display-view').classList.add('hidden');
@@ -883,7 +910,6 @@
         return;
       }
 
-      // Cargar diapositivas guardadas previamente en memoria local
       const savedSlides = localStorage.getItem('eventcast_active_slides');
       if (savedSlides) {
         try {
@@ -908,10 +934,12 @@
         tryAutoFullscreen();
         setupImmediateFullscreenTriggers();
 
-        // Solicitar inmediatamente al panel administrador la lista más reciente
-        localChannel.postMessage({ action: 'request_state' });
+        // Iniciar conexión Peer como Receptor (Proyector)
+        initPeerReceiver(state.sessionId);
       } else {
         switchView('admin');
+        // Iniciar conexión Peer como Transmisor (Panel Administrador)
+        initPeerHost(state.sessionId);
       }
 
       setupCursorAutoHide();
@@ -925,1170 +953,115 @@
       localChannel.onmessage = (event) => {
         handleIncomingSync(event.data);
       };
-
-      // Escuchar cambios en almacenamiento local en caso de ser pestañas independientes
-      window.addEventListener('storage', (e) => {
-        if (e.key === 'eventcast_active_slides' && e.newValue) {
-          try {
-            state.slides = JSON.parse(e.newValue);
-            renderQueueList();
-            renderSlide();
-          } catch (err) {}
-        }
-      });
     });
 
-    function setupImmediateFullscreenTriggers() {
-      const triggerImmediateLaunch = () => {
-        launchProjectorFullscreen();
-        window.removeEventListener('keydown', triggerImmediateLaunch);
-        window.removeEventListener('click', triggerImmediateLaunch);
-        window.removeEventListener('touchstart', triggerImmediateLaunch);
-        window.removeEventListener('pointerdown', triggerImmediateLaunch);
-      };
+    /* -------------------------------------------------------------
+       CONEXIÓN DIRECTA P2P ENTRE LAPTOP Y PROYECTOR (PEERJS)
+       ------------------------------------------------------------- */
+    function initPeerHost(roomId) {
+      const hostPeerId = `eventcast-${roomId}-host`;
+      try {
+        state.peer = new Peer(hostPeerId);
 
-      window.addEventListener('keydown', triggerImmediateLaunch, { once: true });
-      window.addEventListener('click', triggerImmediateLaunch, { once: true });
-      window.addEventListener('touchstart', triggerImmediateLaunch, { once: true });
-      window.addEventListener('pointerdown', triggerImmediateLaunch, { once: true });
-    }
+        state.peer.on('open', (id) => {
+          updateP2PStatus(false, 'Esperando conexión del proyector...');
+        });
 
-    function tryAutoFullscreen() {
-      const rootEl = document.documentElement;
-      const requestFS = rootEl.requestFullscreen || rootEl.webkitRequestFullscreen || rootEl.mozRequestFullScreen || rootEl.msRequestFullscreen;
-      if (requestFS) {
-        requestFS.call(rootEl).then(() => {
-          const overlay = document.getElementById('projector-launch-overlay');
-          if (overlay) overlay.classList.add('hidden');
-        }).catch(() => {});
+        state.peer.on('connection', (conn) => {
+          state.peerConn = conn;
+          setupConnectionListeners(conn, true);
+        });
+
+        state.peer.on('error', (err) => {
+          console.warn('Peer error en Host:', err);
+        });
+      } catch (e) {
+        console.warn('No se pudo inicializar PeerJS host:', e);
       }
     }
 
-    function launchProjectorFullscreen() {
-      const overlay = document.getElementById('projector-launch-overlay');
-      if (overlay) overlay.classList.add('hidden');
+    function initPeerReceiver(roomId) {
+      const receiverPeerId = `eventcast-${roomId}-screen`;
+      const hostPeerId = `eventcast-${roomId}-host`;
 
-      if (!document.fullscreenElement) {
-        const rootEl = document.documentElement;
-        if (rootEl.requestFullscreen) {
-          rootEl.requestFullscreen().catch(() => {});
-        } else if (rootEl.webkitRequestFullscreen) {
-          rootEl.webkitRequestFullscreen();
+      try {
+        state.peer = new Peer(receiverPeerId);
+
+        state.peer.on('open', (id) => {
+          // Conectarse de inmediato al panel de administración
+          connectToHost(hostPeerId);
+        });
+
+        state.peer.on('error', (err) => {
+          // Si el ID ya existía, intentar reconectar
+          setTimeout(() => connectToHost(hostPeerId), 3000);
+        });
+      } catch (e) {
+        console.warn('No se pudo inicializar PeerJS receiver:', e);
+      }
+    }
+
+    function connectToHost(hostPeerId) {
+      if (!state.peer) return;
+      const conn = state.peer.connect(hostPeerId, { reliable: true });
+      state.peerConn = conn;
+      setupConnectionListeners(conn, false);
+    }
+
+    function setupConnectionListeners(conn, isHost) {
+      conn.on('open', () => {
+        if (isHost) {
+          updateP2PStatus(true, '🟢 Proyector Wanbo Conectado');
+          // Enviar inmediatamente todo el contenido acumulado al proyector
+          conn.send({ action: 'sync_full_state', slides: state.slides, currentIndex: state.currentIndex });
+        } else {
+          // El proyector avisa que ya está enlazado y pide datos
+          conn.send({ action: 'request_state' });
         }
-      }
+      });
 
-      renderSlide();
-      resetTimer();
-    }
+      conn.on('data', (data) => {
+        handleIncomingSync(data);
+      });
 
-    function setupCursorAutoHide() {
-      let cursorTimeout;
-      const displayView = document.getElementById('display-view');
-
-      document.addEventListener('mousemove', () => {
-        if (state.activeView === 'display') {
-          displayView.style.cursor = 'default';
-          clearTimeout(cursorTimeout);
-          cursorTimeout = setTimeout(() => {
-            if (state.activeView === 'display') {
-              displayView.style.cursor = 'none';
-            }
-          }, 2500);
+      conn.on('close', () => {
+        if (isHost) {
+          updateP2PStatus(false, '🟡 Proyector desconectado');
+        } else {
+          setTimeout(() => connectToHost(`eventcast-${state.sessionId}-host`), 3000);
         }
       });
     }
 
-    function switchView(viewName) {
-      state.activeView = viewName;
-      const adminNavbar = document.getElementById('admin-navbar');
-      const adminView = document.getElementById('admin-view');
-      const displayView = document.getElementById('display-view');
-      const btnAdmin = document.getElementById('btn-view-admin');
-      const btnDisplay = document.getElementById('btn-view-display');
-      const returnBtn = document.getElementById('btn-return-admin');
-
-      if (viewName === 'display') {
-        if (adminNavbar) adminNavbar.classList.add('hidden');
-        if (adminView) adminView.classList.add('hidden');
-        displayView.classList.remove('hidden');
-
-        if (returnBtn) {
-          if (state.isDedicatedProjectorLink) {
-            returnBtn.classList.add('hidden');
-          } else {
-            returnBtn.classList.remove('hidden');
-          }
-        }
-
-        if (btnDisplay) btnDisplay.className = "px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-950 text-xs transition";
-        if (btnAdmin) btnAdmin.className = "px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white text-xs transition";
-        renderSlide();
-      } else {
-        displayView.classList.add('hidden');
-        if (adminNavbar) adminNavbar.classList.remove('hidden');
-        if (adminView) adminView.classList.remove('hidden');
-
-        if (btnAdmin) btnAdmin.className = "px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-950 text-xs transition";
-        if (btnDisplay) btnDisplay.className = "px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white text-xs transition";
-        renderQueueList();
-      }
-    }
-
-    function toggleFullScreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        if (document.exitFullscreen) document.exitFullscreen();
+    function updateP2PStatus(connected, text) {
+      const dot = document.getElementById('p2p-status-dot');
+      const label = document.getElementById('p2p-status-text');
+      if (dot && label) {
+        dot.className = connected ? "w-2 h-2 rounded-full bg-emerald-400" : "w-2 h-2 rounded-full bg-amber-500 animate-ping";
+        label.innerText = text;
       }
     }
 
     function copyProjectorLink() {
-      const cleanUrl = `${window.location.origin}${window.location.pathname}?mode=projector`;
+      const cleanUrl = `${window.location.origin}${window.location.pathname}?mode=projector&room=${state.sessionId}`;
       const tempInput = document.createElement('input');
       tempInput.value = cleanUrl;
       document.body.appendChild(tempInput);
       tempInput.select();
       try {
         document.execCommand('copy');
-        showToast('✅ Enlace copiado. Pégalo en el navegador del proyector Wanbo.');
+        showToast('✅ Enlace copiado con emparejamiento automático listo.');
       } catch (err) {
         showToast('URL: ' + cleanUrl);
       }
       document.body.removeChild(tempInput);
     }
 
-    /* -------------------------------------------------------------
-       PORTAL Y MODAL QR PARA INVITADOS
-       ------------------------------------------------------------- */
-    function getGuestPortalUrl() {
-      return `${window.location.origin}${window.location.pathname}?mode=guest`;
-    }
-
-    function openGuestQrModal() {
-      const modal = document.getElementById('guest-qr-modal');
-      const urlInput = document.getElementById('guest-portal-url-display');
-      const canvasContainer = document.getElementById('guest-qrcode-canvas');
-      const guestUrl = getGuestPortalUrl();
-
-      urlInput.value = guestUrl;
-      canvasContainer.innerHTML = '';
-
-      try {
-        if (typeof QRCode !== 'undefined') {
-          qrCodeInstance = new QRCode(canvasContainer, {
-            text: guestUrl,
-            width: 180,
-            height: 180,
-            colorDark: "#020617",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-          });
-        } else {
-          canvasContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(guestUrl)}" alt="QR Code" class="w-[180px] h-[180px] rounded-lg">`;
-        }
-      } catch (e) {
-        canvasContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(guestUrl)}" alt="QR Code" class="w-[180px] h-[180px] rounded-lg">`;
-      }
-
-      modal.classList.remove('hidden');
-    }
-
-    function closeGuestQrModal() {
-      document.getElementById('guest-qr-modal').classList.add('hidden');
-    }
-
-    function copyGuestPortalLink() {
-      const guestUrl = getGuestPortalUrl();
-      const tempInput = document.createElement('input');
-      tempInput.value = guestUrl;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      try {
-        document.execCommand('copy');
-        showToast('✅ Enlace de Invitados copiado.');
-      } catch (err) {
-        showToast('URL: ' + guestUrl);
-      }
-      document.body.removeChild(tempInput);
-    }
-
-    /* -------------------------------------------------------------
-       LÓGICA DEL PORTAL DEL INVITADO (?mode=guest)
-       ------------------------------------------------------------- */
-    function setGuestUploadType(type) {
-      state.guestUploadType = type;
-      const btnPhoto = document.getElementById('guest-tab-photo');
-      const btnText = document.getElementById('guest-tab-text');
-      const photoSec = document.getElementById('guest-photo-section');
-      const msgLabel = document.getElementById('guest-message-label');
-
-      if (type === 'image') {
-        btnPhoto.className = "flex-1 py-2 rounded-xl font-bold bg-amber-500 text-slate-950 transition";
-        btnText.className = "flex-1 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition";
-        photoSec.classList.remove('hidden');
-        msgLabel.innerText = "Pie de Foto / Dedicatoria (Opcional)";
-      } else {
-        btnText.className = "flex-1 py-2 rounded-xl font-bold bg-amber-500 text-slate-950 transition";
-        btnPhoto.className = "flex-1 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition";
-        photoSec.classList.add('hidden');
-        msgLabel.innerText = "Mensaje o Dedicatoria Especial";
-      }
-    }
-
-    function handleGuestFileSelected(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      compressImageWithCanvas(file, (compressedDataUrl) => {
-        state.guestPhotoData = compressedDataUrl;
-        document.getElementById('guest-photo-placeholder').classList.add('hidden');
-        const previewWrap = document.getElementById('guest-photo-preview-wrap');
-        const previewImg = document.getElementById('guest-photo-preview');
-        previewImg.src = compressedDataUrl;
-        previewWrap.classList.remove('hidden');
-      });
-    }
-
-    function submitGuestContent() {
-      const type = state.guestUploadType;
-      const message = document.getElementById('guest-input-message').value.trim();
-      const sender = document.getElementById('guest-input-sender').value.trim() || 'Invitado del Evento';
-
-      if (type === 'text' && !message) {
-        alert('Por favor escribe tu dedicatoria antes de enviar.');
-        return;
-      }
-
-      if (type === 'image' && !state.guestPhotoData) {
-        alert('Por favor selecciona o toma una foto.');
-        return;
-      }
-
-      const guestItem = {
-        id: 'web-guest-' + Date.now(),
-        type: type,
-        badge: (type === 'image' ? '📷 Foto de ' : '💬 Mensaje de ') + sender,
-        title: message || (type === 'image' ? '¡Saludos desde la fiesta!' : 'Dedicatoria en Vivo'),
-        message: message,
-        signature: sender,
-        bgStyle: 'gold',
-        url: type === 'image' ? state.guestPhotoData : null,
-        duration: 7000
-      };
-
-      // Si hay conexión a Firebase, enviamos el elemento a la cola de pendientes
-      if (window.firebase && firebase.apps.length && firebase.database) {
-        firebase.database().ref('eventcast_guest_submissions').push(guestItem);
-      } else {
-        // Si operan en red local directa
-        localChannel.postMessage({ action: 'guest_submission', payload: guestItem });
-      }
-
-      // Mostrar pantalla de confirmación al invitado
-      document.getElementById('guest-photo-section').parentElement.classList.add('hidden');
-      document.getElementById('guest-success-card').classList.remove('hidden');
-    }
-
-    function resetGuestForm() {
-      state.guestPhotoData = null;
-      document.getElementById('guest-input-message').value = '';
-      document.getElementById('guest-input-sender').value = '';
-      document.getElementById('guest-file-input').value = '';
-      document.getElementById('guest-photo-preview-wrap').classList.add('hidden');
-      document.getElementById('guest-photo-placeholder').classList.remove('hidden');
-      document.getElementById('guest-success-card').classList.add('hidden');
-      document.getElementById('guest-photo-section').parentElement.classList.remove('hidden');
-    }
-
-    /* -------------------------------------------------------------
-       FORMULARIO, TEMAS Y SELECCIÓN DE DURACIÓN DE VIDEO
-       ------------------------------------------------------------- */
-    function setAddType(type) {
-      state.selectedAddType = type;
-      const tabText = document.getElementById('tab-type-text');
-      const tabImage = document.getElementById('tab-type-image');
-      const tabVideo = document.getElementById('tab-type-video');
-      const formText = document.getElementById('form-text-section');
-      const formMedia = document.getElementById('form-media-section');
-      const videoTrimBox = document.getElementById('video-trim-setting-box');
-
-      [tabText, tabImage, tabVideo].forEach(t => {
-        t.className = "px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition";
-      });
-
-      if (type === 'text') {
-        tabText.className = "px-3 py-1.5 rounded-lg font-bold bg-amber-500 text-slate-950 transition";
-        formText.classList.remove('hidden');
-        formMedia.classList.add('hidden');
-        videoTrimBox.classList.add('hidden');
-      } else {
-        formText.classList.add('hidden');
-        formMedia.classList.remove('hidden');
-
-        if (type === 'image') {
-          tabImage.className = "px-3 py-1.5 rounded-lg font-bold bg-amber-500 text-slate-950 transition";
-          document.getElementById('file-upload-prompt').innerText = "Haz clic para seleccionar Foto";
-          videoTrimBox.classList.add('hidden');
-        } else {
-          tabVideo.className = "px-3 py-1.5 rounded-lg font-bold bg-amber-500 text-slate-950 transition";
-          document.getElementById('file-upload-prompt').innerText = "Haz clic para seleccionar Video Clip";
-          videoTrimBox.classList.remove('hidden');
-        }
-      }
-
-      state.tempMediaData = null;
-      state.tempMediaType = null;
-      updateLivePreview();
-    }
-
-    function setVideoTrimDuration(sec) {
-      state.videoTrimDuration = sec;
-      document.getElementById('label-video-trim').innerText = `${sec} seg`;
-      [15, 20, 30, 40].forEach(s => {
-        const btn = document.getElementById(`btn-trim-${s}`);
-        if (s === sec) {
-          btn.className = "py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold bg-indigo-600 text-white";
-        } else {
-          btn.className = "py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold text-slate-300 hover:bg-indigo-900/50";
-        }
-      });
-      showToast(`✂️ Corte automático configurado a los ${sec} segundos.`);
-    }
-
-    function setQuickBadge(badgeText) {
-      document.getElementById('input-badge').value = badgeText;
-      updateLivePreview();
-    }
-
-    function setThemeStyle(theme) {
-      document.getElementById('selected-theme').value = theme;
-      updateLivePreview();
-    }
-
-    function updateLivePreview() {
-      const type = state.selectedAddType;
-      const previewBox = document.getElementById('preview-box');
-      const mediaContainer = document.getElementById('preview-media-container');
-      const previewImg = document.getElementById('preview-img');
-      const previewVideo = document.getElementById('preview-video');
-      const textContainer = document.getElementById('preview-text-container');
-      const previewBadge = document.getElementById('preview-badge');
-      const previewMsg = document.getElementById('preview-message');
-      const previewSig = document.getElementById('preview-signature');
-
-      if (type === 'text') {
-        mediaContainer.classList.add('hidden');
-        textContainer.classList.remove('hidden');
-
-        const theme = document.getElementById('selected-theme').value;
-        const badge = document.getElementById('input-badge').value.trim() || '🎂 Dedicatoria';
-        const msg = document.getElementById('input-message').value.trim() || 'Escribe aquí el mensaje especial que se verá en pantalla grande...';
-        const sig = document.getElementById('input-signature').value.trim() || '— De parte de tus amigos —';
-
-        previewBadge.innerText = badge;
-        previewMsg.innerText = msg;
-        previewSig.innerText = sig;
-
-        applyThemeClasses(previewBox, previewBadge, previewMsg, previewSig, theme);
-      } else {
-        textContainer.classList.remove('hidden');
-        mediaContainer.classList.remove('hidden');
-
-        const badge = document.getElementById('input-media-badge').value.trim() || '📷 En Vivo';
-        const title = document.getElementById('input-media-title').value.trim() || '';
-
-        previewBadge.innerText = badge;
-        previewMsg.innerText = title;
-        previewSig.innerText = '';
-
-        if (state.tempMediaData) {
-          if (state.tempMediaType === 'video') {
-            previewImg.classList.add('hidden');
-            previewVideo.classList.remove('hidden');
-            previewVideo.src = state.tempMediaData;
-          } else {
-            previewVideo.classList.add('hidden');
-            previewImg.classList.remove('hidden');
-            previewImg.src = state.tempMediaData;
-          }
-        } else {
-          previewVideo.classList.add('hidden');
-          previewImg.classList.remove('hidden');
-          previewImg.src = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80';
-        }
-      }
-    }
-
-    function applyThemeClasses(boxEl, badgeEl, msgEl, sigEl, theme) {
-      boxEl.className = "w-full aspect-video rounded-2xl overflow-hidden relative shadow-2xl flex items-center justify-center p-6 border transition-all duration-300";
-
-      if (theme === 'gold') {
-        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-amber-950/40', 'to-slate-950', 'border-amber-500/30');
-        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-cinzel font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40 backdrop-blur-md";
-        msgEl.className = "text-lg sm:text-xl font-serif text-white text-shadow-gold leading-relaxed";
-        sigEl.className = "text-xs font-medium text-amber-200/90 tracking-wide";
-      } else if (theme === 'neon') {
-        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-purple-950/50', 'to-slate-950', 'border-purple-500/40');
-        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-purple-500/20 text-purple-300 border border-purple-500/40 backdrop-blur-md";
-        msgEl.className = "text-lg sm:text-xl font-bebas tracking-wide text-pink-300 text-shadow-neon leading-relaxed";
-        sigEl.className = "text-xs font-medium text-purple-200 tracking-wide";
-      } else if (theme === 'rose') {
-        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-rose-950/40', 'to-slate-950', 'border-rose-500/30');
-        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-rose-500/20 text-rose-300 border border-rose-500/40 backdrop-blur-md";
-        msgEl.className = "text-lg sm:text-xl font-serif italic text-rose-100 text-shadow-subtle leading-relaxed";
-        sigEl.className = "text-xs font-medium text-rose-300 tracking-wide";
-      } else if (theme === 'sapphire') {
-        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-blue-950/40', 'to-slate-950', 'border-blue-500/30');
-        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-blue-500/20 text-blue-300 border border-blue-500/40 backdrop-blur-md";
-        msgEl.className = "text-lg sm:text-xl font-sans font-extrabold text-blue-100 text-shadow-subtle leading-relaxed";
-        sigEl.className = "text-xs font-medium text-blue-300 tracking-wide";
-      } else {
-        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-emerald-950/40', 'to-slate-950', 'border-emerald-500/30');
-        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 backdrop-blur-md";
-        msgEl.className = "text-lg sm:text-xl font-serif text-emerald-100 text-shadow-subtle leading-relaxed";
-        sigEl.className = "text-xs font-medium text-emerald-300 tracking-wide";
-      }
-    }
-
-    /* -------------------------------------------------------------
-       COMPRESIÓN LOCAL CANVAS Y PROTECCIÓN DE VIDEOS
-       ------------------------------------------------------------- */
-    function handleLocalFileSelected(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const uploadPrompt = document.getElementById('file-upload-prompt');
-
-      if (file.type.startsWith('image/')) {
-        showToast('⏳ Comprimiendo foto para transmisión rápida...');
-        if (uploadPrompt) uploadPrompt.innerText = `Cargando: ${file.name}...`;
-
-        compressImageWithCanvas(file, (compressedDataUrl) => {
-          state.tempMediaData = compressedDataUrl;
-          state.tempMediaType = 'image';
-          state.selectedAddType = 'image';
-
-          if (uploadPrompt) uploadPrompt.innerText = `✅ Foto lista: ${file.name}`;
-          updateLivePreview();
-          showToast('✅ Foto lista para proyectar.');
-        });
-      } else if (file.type.startsWith('video/')) {
-        const maxVideoSize = 15 * 1024 * 1024; // 15 MB
-        if (file.size > maxVideoSize) {
-          showToast('⚠️ Video muy pesado (' + (file.size / (1024*1024)).toFixed(1) + ' MB). Límite de seguridad: 15 MB.');
-          event.target.value = '';
-          return;
-        }
-
-        if (uploadPrompt) uploadPrompt.innerText = `Cargando video: ${file.name}...`;
-        showToast('⏳ Leyendo video para sincronización...');
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          state.tempMediaData = e.target.result;
-          state.tempMediaType = 'video';
-          state.selectedAddType = 'video';
-
-          if (uploadPrompt) uploadPrompt.innerText = `✅ Video listo: ${file.name}`;
-          updateLivePreview();
-          showToast('✅ Video clip listo. Se cortará a los ' + state.videoTrimDuration + ' seg.');
-        };
-        reader.onerror = () => {
-          showToast('⚠️ Error al leer el video.');
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-
-    function compressImageWithCanvas(file, callback) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          // Reducción balanceada para transmisión instantánea por red o Firebase
-          const maxDim = 1280;
-
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          try {
-            // Calidad al 60% para que pese menos de 180 KB y vuele en la sincronización
-            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.60);
-            callback(compressedDataUrl);
-          } catch (err) {
-            callback(e.target.result);
-          }
-        };
-        img.onerror = () => {
-          showToast('⚠️ No se pudo decodificar la imagen.');
-        };
-        img.src = e.target.result;
-      };
-      reader.onerror = () => {
-        showToast('⚠️ Error al abrir el archivo.');
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function handleUrlInput(url) {
-      if (!url) return;
-      state.tempMediaData = url;
-      state.tempMediaType = url.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
-      updateLivePreview();
-    }
-
-    /* -------------------------------------------------------------
-       CONFIGURACIÓN FIREBASE Y VERIFICADOR EN VIVO
-       ------------------------------------------------------------- */
-    function openFirebaseModal() {
-      document.getElementById('firebase-modal').classList.remove('hidden');
-      updateFirebaseModalStatus();
-    }
-
-    function closeFirebaseModal() {
-      document.getElementById('firebase-modal').classList.add('hidden');
-    }
-
-    function updateFirebaseModalStatus() {
-      const dot = document.getElementById('fb-status-dot');
-      const text = document.getElementById('fb-status-text');
-      if (!state.isFirebaseConnected) {
-        dot.className = "w-3 h-3 rounded-full bg-slate-600";
-        text.innerText = "Estado: Desconectado / Sin configurar";
-      } else {
-        dot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-pulse";
-        text.innerText = "Estado: Conectado a Realtime DB";
-      }
-    }
-
-    function saveFirebaseConfig() {
-      const apiKey = document.getElementById('fb-apiKey').value.trim();
-      const dbUrl = document.getElementById('fb-dbUrl').value.trim();
-      const projId = document.getElementById('fb-projectId').value.trim();
-
-      if (!apiKey || !dbUrl) {
-        showToast('⚠️ Ingresa al menos API Key y Database URL.');
-        return;
-      }
-
-      const fbConfig = { apiKey, databaseURL: dbUrl, projectId: projId };
-      localStorage.setItem('eventcast_fb_config', JSON.stringify(fbConfig));
-      initFirebase(fbConfig);
-      closeFirebaseModal();
-    }
-
-    function checkSavedFirebaseConfig() {
-      const saved = localStorage.getItem('eventcast_fb_config');
-      if (saved) {
-        try {
-          const config = JSON.parse(saved);
-          document.getElementById('fb-apiKey').value = config.apiKey || '';
-          document.getElementById('fb-dbUrl').value = config.databaseURL || '';
-          document.getElementById('fb-projectId').value = config.projectId || '';
-          initFirebase(config);
-        } catch (e) {}
-      }
-    }
-
-    function initFirebase(config) {
-      try {
-        if (!firebase.apps.length) {
-          firebase.initializeApp(config);
-        }
-        
-        const db = firebase.database();
-        const connectedRef = db.ref(".info/connected");
-
-        connectedRef.on("value", (snap) => {
-          const isOnline = snap.val() === true;
-          const syncLabel = document.getElementById('nav-sync-label');
-          const syncDot = document.getElementById('nav-sync-indicator');
-          const fbDot = document.getElementById('fb-status-dot');
-          const fbText = document.getElementById('fb-status-text');
-
-          if (isOnline) {
-            state.isFirebaseConnected = true;
-            if (syncLabel) syncLabel.innerText = "Nube Activa (Firebase)";
-            if (syncDot) syncDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
-            if (fbDot) fbDot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-pulse";
-            if (fbText) fbText.innerText = "Estado: Conectado y Sincronizando";
-          } else {
-            state.isFirebaseConnected = false;
-            if (syncLabel) syncLabel.innerText = "Conectando Firebase...";
-            if (syncDot) syncDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
-            if (fbDot) fbDot.className = "w-3 h-3 rounded-full bg-amber-400 animate-ping";
-            if (fbText) fbText.innerText = "Estado: Conectando...";
-          }
-        });
-
-        db.ref('eventcast_live').on('value', (snapshot) => {
-          const val = snapshot.val();
-          if (val) handleIncomingSync(val);
-        });
-
-        // Escucha en tiempo real los envíos de invitados web
-        db.ref('eventcast_guest_submissions').on('child_added', (snapshot) => {
-          const guestSlide = snapshot.val();
-          if (guestSlide && state.activeView === 'admin') {
-            routeIncomingSlide(guestSlide, guestSlide.signature || 'Invitado Web', guestSlide.type === 'image' ? 'foto' : 'mensaje');
-            snapshot.ref.remove(); // Se purga de Firebase una vez recibido por el admin
-          }
-        });
-
-        showToast('☁️ Firebase inicializado correctamente.');
-      } catch (err) {
-        state.isFirebaseConnected = false;
-        showToast('⚠️ Error al conectar Firebase: ' + (err.message || 'Verifica credenciales'));
-      }
-    }
-
-    function testFirebaseLiveConnection() {
-      if (!window.firebase || !firebase.apps.length) {
-        showToast('⚠️ Primero debes ingresar las credenciales y pulsar Guardar.');
-        return;
-      }
-
-      const btnTest = document.getElementById('btn-test-fb');
-      if (btnTest) btnTest.innerText = "⏳ Probando...";
-
-      const testRef = firebase.database().ref('eventcast_connection_test');
-      const testPayload = { ping: Date.now() };
-
-      testRef.set(testPayload)
-        .then(() => {
-          showToast('✅ ¡Conexión con Firebase 100% exitosa!');
-          if (btnTest) btnTest.innerText = "✅ Conectado";
-          const fbDot = document.getElementById('fb-status-dot');
-          const fbText = document.getElementById('fb-status-text');
-          if (fbDot) fbDot.className = "w-3 h-3 rounded-full bg-emerald-400";
-          if (fbText) fbText.innerText = "Estado: Conexión Verificada";
-        })
-        .catch((err) => {
-          showToast('❌ Falló la prueba: ' + (err.message || 'Revisa permisos en Firebase'));
-          if (btnTest) btnTest.innerText = "❌ Falló";
-          const fbDot = document.getElementById('fb-status-dot');
-          const fbText = document.getElementById('fb-status-text');
-          if (fbDot) fbDot.className = "w-3 h-3 rounded-full bg-rose-500";
-          if (fbText) fbText.innerText = "Estado: Error de permisos o URL";
-        });
-    }
-
-    function openVideoLimitModal() {
-      const modal = document.getElementById('video-limit-modal');
-      const listContainer = document.getElementById('video-limit-list');
-      const videos = state.slides.filter(s => s.type === 'video');
-
-      if (videos.length === 0) {
-        listContainer.innerHTML = '<p class="text-xs text-slate-500 py-3 text-center">No hay videos en la lista.</p>';
-      } else {
-        listContainer.innerHTML = state.slides.map((s, idx) => {
-          if (s.type !== 'video') return '';
-          return `
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-              <span class="text-xs text-slate-200 truncate max-w-[200px]">🎬 ${s.title || s.badge || 'Video Clip'}</span>
-              <button onclick="removeVideoAndCloseModal(${idx})" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-600 hover:bg-rose-500 text-white">
-                Borrar este
-              </button>
-            </div>
-          `;
-        }).join('');
-      }
-
-      modal.classList.remove('hidden');
-    }
-
-    function closeVideoLimitModal() {
-      document.getElementById('video-limit-modal').classList.add('hidden');
-    }
-
-    function removeVideoAndCloseModal(index) {
-      deleteSlide(index);
-      closeVideoLimitModal();
-      showToast('✅ Video eliminado. Tienes espacio libre para agregar otro.');
-    }
-
-    /* -------------------------------------------------------------
-       SUBIR SLIDE Y REGISTRO EN COLA
-       ------------------------------------------------------------- */
-    function submitNewSlide() {
-      const type = state.selectedAddType;
-      const newSlide = {
-        id: 'slide-' + Date.now(),
-        type: type,
-        duration: state.slideDuration
-      };
-
-      if (type === 'text') {
-        const msg = document.getElementById('input-message').value.trim();
-        if (!msg) {
-          showToast('⚠️ Escribe el mensaje de la dedicatoria.');
-          return;
-        }
-        newSlide.badge = document.getElementById('input-badge').value.trim() || 'Aviso Especial';
-        newSlide.title = newSlide.badge;
-        newSlide.message = msg;
-        newSlide.signature = document.getElementById('input-signature').value.trim();
-        newSlide.bgStyle = document.getElementById('selected-theme').value || 'gold';
-      } else {
-        if (!state.tempMediaData) {
-          showToast('⚠️ Selecciona primero una foto o video.');
-          return;
-        }
-
-        newSlide.url = state.tempMediaData;
-        newSlide.badge = document.getElementById('input-media-badge').value.trim() || (type === 'video' ? '🎬 Clip' : '📷 En Vivo');
-        newSlide.title = document.getElementById('input-media-title').value.trim() || newSlide.badge;
-        newSlide.message = '';
-        newSlide.signature = '';
-
-        if (type === 'video') {
-          const currentVideosCount = state.slides.filter(s => s.type === 'video').length;
-          if (currentVideosCount >= 4) {
-            openVideoLimitModal();
-            showToast('🛑 Hay 4 videos activos. Selecciona cuál borrar para reemplazarlo.');
-            return;
-          }
-          newSlide.maxDuration = state.videoTrimDuration;
-        }
-      }
-
-      if (newSlide.type === 'video') {
-        if (state.slides.length >= 3) {
-          const insertIndex = Math.floor(state.slides.length / 2);
-          state.slides.splice(insertIndex, 0, newSlide);
-        } else {
-          state.slides.push(newSlide);
-        }
-      } else {
-        state.slides.push(newSlide);
-      }
-
-      // Limpieza de campos
-      document.getElementById('input-message').value = '';
-      document.getElementById('input-signature').value = '';
-      document.getElementById('input-media-url').value = '';
-      document.getElementById('input-file-media').value = '';
-      const promptText = document.getElementById('file-upload-prompt');
-      if (promptText) {
-        promptText.innerText = (type === 'video') ? "Haz clic para seleccionar Video Clip" : "Haz clic para seleccionar Foto";
-      }
-      state.tempMediaData = null;
-      state.tempMediaType = null;
-
-      updateLivePreview();
-      renderQueueList();
-      
-      // Si la cola estaba vacía o solo tenía este elemento, proyectar de inmediato
-      if (state.slides.length === 1) {
-        state.currentIndex = 0;
-        renderSlide();
-      }
-
-      broadcastSync('slide_added', state.slides);
-      showToast('🚀 Publicación agregada con éxito.');
-    }
-
-    /* -------------------------------------------------------------
-       LIBERACIÓN DE MEMORIA RAM
-       ------------------------------------------------------------- */
-    function releaseMemoryBlob(url) {
-      if (!url) return;
-      if (url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
-      }
-      if (mediaBlobCache.has(url)) {
-        const cachedBlobUrl = mediaBlobCache.get(url);
-        URL.revokeObjectURL(cachedBlobUrl);
-        mediaBlobCache.delete(url);
-      }
-    }
-
-    function deleteSlide(index) {
-      const slide = state.slides[index];
-      if (slide) {
-        releaseMemoryBlob(slide.url);
-      }
-      state.slides.splice(index, 1);
-      if (state.currentIndex >= state.slides.length) {
-        state.currentIndex = Math.max(0, state.slides.length - 1);
-      }
-      renderQueueList();
-      renderSlide();
-      resetTimer();
-      broadcastSync('slide_deleted', state.slides);
-      showToast('🗑️ Elemento eliminado y memoria purgada.');
-    }
-
-    function clearOnlyVideos() {
-      state.slides = state.slides.filter(s => {
-        if (s.type === 'video') {
-          releaseMemoryBlob(s.url);
-          return false;
-        }
-        return true;
-      });
-      if (state.currentIndex >= state.slides.length) {
-        state.currentIndex = Math.max(0, state.slides.length - 1);
-      }
-      renderQueueList();
-      renderSlide();
-      resetTimer();
-      broadcastSync('videos_cleared', state.slides);
-      showToast('✨ Videos eliminados. Memoria RAM liberada.');
-    }
-
-    function clearAllSlides() {
-      state.slides.forEach(s => releaseMemoryBlob(s.url));
-      state.slides = [];
-      state.currentIndex = 0;
-      renderQueueList();
-      renderSlide();
-      resetTimer();
-      broadcastSync('all_cleared', state.slides);
-      showToast('🧹 Cola de proyección vaciada por completo.');
-    }
-
-    /* -------------------------------------------------------------
-       CACHÉ BLOB EN PROYECTOR (DESCARGA ÚNICA)
-       ------------------------------------------------------------- */
-    async function getCachedMediaUrl(originalUrl) {
-      if (!originalUrl) return '';
-      if (originalUrl.startsWith('blob:') || originalUrl.startsWith('data:')) {
-        return originalUrl;
-      }
-      if (mediaBlobCache.has(originalUrl)) {
-        return mediaBlobCache.get(originalUrl);
-      }
-      try {
-        const response = await fetch(originalUrl);
-        const blob = await response.blob();
-        const localBlobUrl = URL.createObjectURL(blob);
-        mediaBlobCache.set(originalUrl, localBlobUrl);
-        return localBlobUrl;
-      } catch (e) {
-        return originalUrl;
-      }
-    }
-
-    /* -------------------------------------------------------------
-       MOTOR DE RENDER DEL PROYECTOR Y CORTE DE VIDEO
-       ------------------------------------------------------------- */
-    async function renderSlide() {
-      if (state.slides.length === 0) {
-        showEmptyProjectorState();
-        return;
-      }
-
-      if (state.currentIndex >= state.slides.length) {
-        state.currentIndex = 0;
-      }
-
-      const slide = state.slides[state.currentIndex];
-      const videoWrap = document.getElementById('projector-video-wrap');
-      const textWrap = document.getElementById('projector-text-wrap');
-      const projVideo = document.getElementById('projector-video');
-      const projBadge = document.getElementById('proj-badge');
-      const projMsg = document.getElementById('proj-message');
-      const projSig = document.getElementById('proj-signature');
-
-      const imgA = document.getElementById('projector-image-a');
-      const imgB = document.getElementById('projector-image-b');
-      const imgBgA = document.getElementById('projector-image-bg-a');
-      const imgBgB = document.getElementById('projector-image-bg-b');
-
-      clearInterval(videoTimeCheckInterval);
-      projVideo.pause();
-
-      if (slide.type === 'text') {
-        videoWrap.classList.add('hidden');
-        textWrap.classList.remove('hidden');
-
-        imgA.classList.remove('opacity-100');
-        imgA.classList.add('opacity-0');
-        imgB.classList.remove('opacity-100');
-        imgB.classList.add('opacity-0');
-        if (imgBgA) imgBgA.classList.add('opacity-0');
-        if (imgBgB) imgBgB.classList.add('opacity-0');
-
-        projBadge.innerText = slide.badge || 'Aviso Especial';
-        projMsg.innerText = slide.message || '';
-        projSig.innerText = slide.signature ? `— ${slide.signature} —` : '';
-
-        applyProjectorTheme(textWrap, projBadge, projMsg, projSig, slide.bgStyle || 'gold');
-      } else if (slide.type === 'image') {
-        videoWrap.classList.add('hidden');
-        textWrap.classList.add('hidden');
-
-        const cachedUrl = await getCachedMediaUrl(slide.url);
-
-        if (state.activeImageLayer === 'a') {
-          imgB.src = cachedUrl;
-          if (imgBgB) imgBgB.src = cachedUrl;
-          imgB.classList.remove('opacity-0');
-          imgB.classList.add('opacity-100');
-          if (imgBgB) {
-            imgBgB.classList.remove('opacity-0');
-            imgBgB.classList.add('opacity-40');
-          }
-
-          imgA.classList.remove('opacity-100');
-          imgA.classList.add('opacity-0');
-          if (imgBgA) imgBgA.classList.add('opacity-0');
-          state.activeImageLayer = 'b';
-        } else {
-          imgA.src = cachedUrl;
-          if (imgBgA) imgBgA.src = cachedUrl;
-          imgA.classList.remove('opacity-0');
-          imgA.classList.add('opacity-100');
-          if (imgBgA) {
-            imgBgA.classList.remove('opacity-0');
-            imgBgA.classList.add('opacity-40');
-          }
-
-          imgB.classList.remove('opacity-100');
-          imgB.classList.add('opacity-0');
-          if (imgBgB) imgBgB.classList.add('opacity-0');
-          state.activeImageLayer = 'a';
-        }
-      } else if (slide.type === 'video') {
-        textWrap.classList.add('hidden');
-        imgA.classList.add('opacity-0');
-        imgB.classList.add('opacity-0');
-        if (imgBgA) imgBgA.classList.add('opacity-0');
-        if (imgBgB) imgBgB.classList.add('opacity-0');
-        videoWrap.classList.remove('hidden');
-
-        const cachedUrl = await getCachedMediaUrl(slide.url);
-        projVideo.src = cachedUrl;
-        projVideo.muted = false;
-        projVideo.currentTime = 0;
-
-        const maxDurationSec = slide.maxDuration || state.videoTrimDuration || 20;
-
-        projVideo.play().catch(() => {
-          projVideo.muted = true;
-          projVideo.play().catch(() => {});
-        });
-
-        // VIGILANTE DE CORTE: Si pasa del segundo configurado, corta de inmediato y salta
-        videoTimeCheckInterval = setInterval(() => {
-          if (projVideo.currentTime >= maxDurationSec) {
-            clearInterval(videoTimeCheckInterval);
-            nextSlide();
-          }
-        }, 200);
-
-        projVideo.onended = () => {
-          clearInterval(videoTimeCheckInterval);
-          nextSlide();
-        };
-      }
-
-      renderQueueList();
-    }
-
-    function applyProjectorTheme(wrapEl, badgeEl, msgEl, sigEl, theme) {
-      if (theme === 'gold') {
-        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-cinzel font-black uppercase tracking-widest border border-amber-500/50 bg-amber-950/40 text-amber-300 backdrop-blur-md shadow-2xl transition-all";
-        msgEl.className = "fluid-proj-message font-serif text-white font-extrabold leading-tight text-shadow-gold px-2 break-words";
-        sigEl.className = "fluid-proj-signature font-sans font-semibold text-amber-200/90 tracking-wide text-shadow-subtle px-2";
-      } else if (theme === 'neon') {
-        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-bebas tracking-widest uppercase border border-purple-500/50 bg-purple-950/40 text-pink-300 backdrop-blur-md shadow-2xl transition-all";
-        msgEl.className = "fluid-proj-message font-bebas text-pink-300 font-extrabold leading-tight text-shadow-neon px-2 tracking-wide break-words";
-        sigEl.className = "fluid-proj-signature font-sans font-semibold text-purple-200 tracking-wide text-shadow-subtle px-2";
-      } else if (theme === 'rose') {
-        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-serif font-black uppercase tracking-widest border border-rose-500/50 bg-rose-950/40 text-rose-300 backdrop-blur-md shadow-2xl transition-all";
-        msgEl.className = "fluid-proj-message font-serif italic text-rose-100 font-extrabold leading-tight text-shadow-subtle px-2 break-words";
-        sigEl.className = "fluid-proj-signature font-sans font-semibold text-rose-300 tracking-wide text-shadow-subtle px-2";
-      } else if (theme === 'sapphire') {
-        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-sans font-black uppercase tracking-widest border border-blue-500/50 bg-blue-950/40 text-blue-300 backdrop-blur-md shadow-2xl transition-all";
-        msgEl.className = "fluid-proj-message font-sans text-blue-100 font-extrabold leading-tight text-shadow-subtle px-2 break-words";
-        sigEl.className = "fluid-proj-signature font-sans font-semibold text-blue-300 tracking-wide text-shadow-subtle px-2";
-      } else {
-        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-serif font-black uppercase tracking-widest border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 backdrop-blur-md shadow-2xl transition-all";
-        msgEl.className = "fluid-proj-message font-serif text-emerald-100 font-extrabold leading-tight text-shadow-subtle px-2 break-words";
-        sigEl.className = "fluid-proj-signature font-sans font-semibold text-emerald-300 tracking-wide text-shadow-subtle px-2";
-      }
-    }
-
-    function showEmptyProjectorState() {
-      const textWrap = document.getElementById('projector-text-wrap');
-      const videoWrap = document.getElementById('projector-video-wrap');
-      const projBadge = document.getElementById('proj-badge');
-      const projMsg = document.getElementById('proj-message');
-      const projSig = document.getElementById('proj-signature');
-
-      videoWrap.classList.add('hidden');
-      textWrap.classList.remove('hidden');
-
-      projBadge.innerText = 'EventCast Pro';
-      projMsg.innerText = 'Esperando dedicatorias y fotos desde la cabina...';
-      projSig.innerText = '— Wanbo 7 Pro Display Online —';
-      applyProjectorTheme(textWrap, projBadge, projMsg, projSig, 'gold');
-    }
-
-    /* -------------------------------------------------------------
-       TEMPORIZADOR Y CONTROL DE AVANCE
-       ------------------------------------------------------------- */
-    function startSlideTimer() {
-      clearInterval(timerInterval);
-      timerProgress = 0;
-      const stepMs = 50;
-
-      timerInterval = setInterval(() => {
-        if (!state.isPlaying || state.slides.length <= 1) return;
-
-        const currentSlide = state.slides[state.currentIndex];
-        if (currentSlide && currentSlide.type === 'video') return;
-
-        const duration = (currentSlide && currentSlide.duration) || state.slideDuration;
-        timerProgress += stepMs;
-        const progressPercent = Math.min(100, (timerProgress / duration) * 100);
-
-        const progressBar = document.getElementById('slide-progress-bar');
-        if (progressBar) {
-          progressBar.style.width = progressPercent + '%';
-        }
-
-        if (timerProgress >= duration) {
-          nextSlide();
-        }
-      }, stepMs);
-    }
-
-    function resetTimer() {
-      timerProgress = 0;
-      const progressBar = document.getElementById('slide-progress-bar');
-      if (progressBar) progressBar.style.width = '0%';
-    }
-
-    function nextSlide() {
-      if (state.slides.length === 0) return;
-      state.currentIndex = (state.currentIndex + 1) % state.slides.length;
-      resetTimer();
-      renderSlide();
-      broadcastSync('index_changed', state.currentIndex);
-    }
-
-    function prevSlide() {
-      if (state.slides.length === 0) return;
-      state.currentIndex = (state.currentIndex - 1 + state.slides.length) % state.slides.length;
-      resetTimer();
-      renderSlide();
-      broadcastSync('index_changed', state.currentIndex);
-    }
-
-    function jumpToSlide(index) {
-      state.currentIndex = index;
-      resetTimer();
-      renderSlide();
-      broadcastSync('index_changed', state.currentIndex);
-    }
-
-    function togglePlayPause() {
-      state.isPlaying = !state.isPlaying;
-      const btnText = document.getElementById('text-play-state');
-      btnText.innerText = state.isPlaying ? 'Pausar' : 'Reanudar';
-      showToast(state.isPlaying ? '▶️ Proyección reanudada' : '⏸️ Proyección pausada');
-    }
-
-    function setSlideDuration(val) {
-      state.slideDuration = parseInt(val, 10);
-      showToast(`⏱️ Duración: ${val / 1000} seg por foto.`);
-    }
-
-    /* -------------------------------------------------------------
-       RENDERIZADO DE LA COLA EN EL PANEL ADMINISTRADOR
-       ------------------------------------------------------------- */
-    function renderQueueList() {
-      const container = document.getElementById('slides-queue-list');
-      const badgeCount = document.getElementById('badge-queue-count');
-      const statTotal = document.getElementById('stat-total-slides');
-      const statVideos = document.getElementById('stat-video-count');
-
-      const videoCount = state.slides.filter(s => s.type === 'video').length;
-
-      badgeCount.innerText = state.slides.length;
-      statTotal.innerText = state.slides.length;
-      statVideos.innerText = `${videoCount}/4`;
-
-      if (state.slides.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-12 px-4 border border-dashed border-slate-800 rounded-2xl">
-            <p class="text-sm font-semibold text-slate-400">No hay diapositivas en cola</p>
-            <p class="text-xs text-slate-600 mt-1">Agrega una dedicatoria o foto arriba</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = state.slides.map((s, idx) => {
-        const isActive = idx === state.currentIndex;
-        const activeClass = isActive 
-          ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10" 
-          : "border-slate-800 bg-slate-950/60 hover:border-slate-700";
-
-        let typeBadge = '';
-        if (s.type === 'text') {
-          typeBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">✍️ Dedicatoria</span>';
-        } else if (s.type === 'image') {
-          typeBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">📷 Foto HD</span>';
-        } else {
-          typeBadge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">🎬 Video (${s.maxDuration || 20}s)</span>`;
-        }
-
-        const titleText = s.message || s.title || s.badge || 'Elemento multimedia';
-
-        return `
-          <div class="p-3 rounded-2xl border ${activeClass} flex items-center justify-between gap-3 transition cursor-pointer" onclick="jumpToSlide(${idx})">
-            <div class="flex items-center gap-3 overflow-hidden">
-              <span class="w-6 h-6 rounded-lg ${isActive ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'} flex items-center justify-center text-xs font-bold shrink-0">
-                ${idx + 1}
-              </span>
-              <div class="overflow-hidden">
-                <div class="flex items-center gap-2">
-                  ${typeBadge}
-                  <span class="text-xs font-semibold text-white truncate max-w-[180px]">${s.badge || ''}</span>
-                </div>
-                <p class="text-xs text-slate-400 truncate mt-0.5">${titleText}</p>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
-              <button onclick="deleteSlide(${idx})" title="Eliminar y liberar RAM" class="p-1.5 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    /* -------------------------------------------------------------
-       SINCRONIZACIÓN DUAL: RED LOCAL + FIREBASE
-       ------------------------------------------------------------- */
     function broadcastSync(action, payload) {
-      // Guardar en almacenamiento para sincronización inmediata
+      // 1. Guardar en memoria local
       try {
         localStorage.setItem('eventcast_active_slides', JSON.stringify(state.slides));
-      } catch (err) {
-        console.warn('Almacenamiento lleno o no disponible:', err);
-      }
+      } catch (err) {}
 
       const dataPackage = {
         action: action,
@@ -2097,32 +1070,44 @@
         timestamp: Date.now()
       };
 
+      // 2. Transmisión por BroadcastChannel (misma pestaña o mismo equipo)
       try {
         localChannel.postMessage(dataPackage);
-      } catch (err) {
-        console.warn('Error en postMessage local:', err);
+      } catch (err) {}
+
+      // 3. Transmisión P2P directa a través de Wi-Fi hacia el Proyector (Dispositivo independiente)
+      if (state.peerConn && state.peerConn.open) {
+        try {
+          state.peerConn.send(dataPackage);
+        } catch (e) {
+          console.warn('Error enviando datos por P2P:', e);
+        }
       }
 
+      // 4. Transmisión por Firebase (si está configurado)
       if (state.isFirebaseConnected && window.firebase && firebase.database) {
         try {
-          firebase.database().ref('eventcast_live').set({
+          // Filtramos para evitar enviar archivos gigantescos que Firebase rechace
+          const sanitizedSlides = state.slides.map(s => {
+            if (s.type === 'video' && s.url && s.url.startsWith('data:')) {
+              return { ...s, url: '' }; // Los videos se transmiten preferentemente por P2P o URL directa
+            }
+            return s;
+          });
+
+          firebase.database().ref(`eventcast_rooms/${state.sessionId}`).set({
             action: action,
-            slides: state.slides,
+            slides: sanitizedSlides,
             currentIndex: state.currentIndex,
             timestamp: Date.now()
-          }).catch(err => {
-            console.warn('Error al guardar en Firebase:', err);
-          });
-        } catch (e) {
-          console.warn('Error sincronizando Firebase:', e);
-        }
+          }).catch(() => {});
+        } catch (e) {}
       }
     }
 
     function handleIncomingSync(data) {
       if (!data) return;
 
-      // El proyector acaba de abrirse y pide el contenido actual a la cabina
       if (data.action === 'request_state') {
         if (state.activeView === 'admin' && state.slides.length > 0) {
           broadcastSync('sync_full_state', state.slides);
@@ -2130,7 +1115,6 @@
         return;
       }
 
-      // Recepción de envíos hechos por invitados desde la web (?mode=guest)
       if (data.action === 'guest_submission' && data.payload) {
         routeIncomingSlide(data.payload, data.payload.signature || 'Invitado Web', data.payload.type === 'image' ? 'foto' : 'mensaje');
         return;
@@ -2142,6 +1126,7 @@
       if (typeof data.currentIndex === 'number') {
         state.currentIndex = data.currentIndex;
       }
+
       renderQueueList();
       renderSlide();
     }
