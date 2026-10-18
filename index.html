@@ -1,725 +1,2245 @@
+```html
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Master Mobility OS | Centro de Control Maestro Satélite</title>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<style>
-:root {
-    --gold: #e6b800;
-    --red: #d32f2f;
-    --orange: #ff6b00;
-    --dark: #050505;
-    --card: #111;
-    --success: #00ff88;
-    --blue: #3b82f6;
-    --info: #0dcaf0;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-body { background: var(--dark); color: white; overflow-x: hidden; padding-bottom: 40px; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventCast Pro - Sistema de Proyección para Eventos</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Cinzel, Playfair Display, Inter y Bebas Neue -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600;1,700&family=Bebas+Neue&display=swap" rel="stylesheet">
 
-header { background: rgba(0,0,0,0.95); padding: 15px 25px; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; height: 70px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); }
-.container { padding: 25px 15px; max-width: 1300px; margin: auto; }
+  <!-- Librería QR Code oficial para generar el QR directo en el navegador -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-.form-panel { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid #222; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.input-group { margin-bottom: 15px; }
-.input-group label { display: block; font-size: 0.8rem; color: var(--gold); margin-bottom: 8px; font-family: 'Orbitron'; font-weight: bold; text-transform: uppercase; }
-input, select, textarea { width: 100%; padding: 12px; background: #000; color: white; border: 1px solid #333; border-radius: 10px; font-size: 15px; }
-input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: none; }
+  <!-- Firebase SDKs (Compat v8) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-.btn { padding: 14px; border: none; border-radius: 10px; font-family: 'Orbitron'; font-weight: 900; width: 100%; cursor: pointer; transition: 0.3s; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 10px; }
-.btn-gold { background: var(--gold); color: black; }
-.btn-blue { background: var(--blue); color: white; }
-.btn-red { background: var(--red); color: white; }
-.btn-green { background: var(--success); color: black; }
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+            cinzel: ['Cinzel', 'serif'],
+            bebas: ['Bebas Neue', 'sans-serif']
+          },
+          animation: {
+            'kenburns': 'kenburns 18s ease-in-out infinite alternate',
+            'marquee': 'marquee 22s linear infinite'
+          },
+          keyframes: {
+            kenburns: {
+              '0%': { transform: 'scale(1.0) translate(0, 0)' },
+              '100%': { transform: 'scale(1.12) translate(-1.5%, -1.5%)' }
+            },
+            marquee: {
+              '0%': { transform: 'translateX(100%)' },
+              '100%': { transform: 'translateX(-100%)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
 
-/* DISEÑO RESPONSIVO CORREGIDO PARA MÓVILES */
-.main-split { display: grid; grid-template-columns: 1fr; gap: 25px; }
-.audit-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; }
+  <style>
+    .text-shadow-gold {
+      text-shadow: 0 0 25px rgba(245, 158, 11, 0.7), 0 3px 12px rgba(0, 0, 0, 0.95);
+    }
+    .text-shadow-neon {
+      text-shadow: 0 0 18px rgba(168, 85, 247, 0.85), 0 0 35px rgba(236, 72, 153, 0.75), 0 3px 8px #000;
+    }
+    .text-shadow-subtle {
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
 
-@media (min-width: 800px) {
-    .main-split { grid-template-columns: 1fr 1.2fr; }
-}
-
-.login-box { max-width: 400px; margin: 12vh auto 0 auto; background: var(--card); padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-
-/* Área de firma manuscrita digital */
-.signature-wrapper { background: #fff; border-radius: 10px; padding: 5px; margin-top: 10px; position: relative; border: 2px solid #333; }
-canvas { width: 100%; height: 220px; background: #fff; touch-action: none; border-radius: 8px; }
-
-.link-box { background: #000; padding: 12px; border-radius: 8px; border: 1px solid #333; font-size: 0.85rem; color: var(--info); word-break: break-all; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; }
-.copy-btn { background: none; border: none; color: var(--gold); cursor: pointer; font-weight: bold; font-family: 'Orbitron'; padding-left: 10px; flex-shrink: 0; }
-
-/* Estilos de historial detallado */
-.metric-box { background: #000; padding: 15px; border-radius: 10px; border-left: 4px solid var(--gold); margin-bottom: 10px; }
-.missed-day-tag { background: rgba(211, 47, 47, 0.15); border: 1px solid var(--red); color: #ff8888; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 5px; font-family: monospace; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; }
-.badge { padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; font-family: 'Orbitron'; display: inline-block; }
-
-/* Modal Ver Documento */
-.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; padding: 15px; }
-.modal-content { background: var(--card); padding: 30px; border-radius: 15px; border: 1px solid var(--gold); max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; }
-</style>
+    /* Tipografía fluida adaptable a proyectores y pantallas */
+    .fluid-proj-badge {
+      font-size: clamp(0.75rem, 1.8vw, 1.35rem);
+      padding: clamp(0.35rem, 0.8vw, 0.65rem) clamp(0.9rem, 2vw, 2rem);
+    }
+    .fluid-proj-message {
+      font-size: clamp(1.4rem, 4.2vw, 4.2rem);
+      line-height: 1.18;
+    }
+    .fluid-proj-signature {
+      font-size: clamp(0.9rem, 2vw, 1.75rem);
+    }
+    .fluid-bottom-bar {
+      height: clamp(2.75rem, 6vh, 4.5rem);
+      padding-left: clamp(0.75rem, 2vw, 2.5rem);
+      padding-right: clamp(0.75rem, 2vw, 2.5rem);
+    }
+  </style>
 </head>
-<body>
+<body class="h-full overflow-hidden select-none font-sans bg-slate-950">
 
-<div id="panel-login-admin" style="display: none;">
-    <div class="login-box">
-        <h2 style="font-family:'Orbitron'; color:var(--red); margin-bottom:15px;"><i class="fa-solid fa-shield-halved"></i> ACCESO MAESTRO</h2>
-        <p style="color:#aaa; font-size:0.9rem; margin-bottom:25px;">Módulo administrativo satélite independiente.</p>
-        <form onsubmit="verificarPasswordAdmin(event)">
-            <input type="password" id="pass-modulo" placeholder="Contraseña Maestra" style="text-align:center; letter-spacing:5px; margin-bottom:20px;" required>
-            <button type="submit" class="btn btn-red">AUTENTICAR PANEL</button>
-        </form>
+  <!-- ======================================================= -->
+  <!-- MODAL: GESTOR DE LÍMITE DE 4 VIDEOS                     -->
+  <!-- ======================================================= -->
+  <div id="video-limit-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="text-amber-400 text-xl">⚠️</span>
+          Límite de 4 Videos Activos
+        </h3>
+        <button onclick="closeVideoLimitModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-300 mt-3 leading-relaxed">
+        Para proteger la memoria RAM del proyector <strong>Wanbo</strong> y evitar que se trabe, selecciona qué video deseas eliminar para dar espacio al nuevo:
+      </p>
+
+      <div id="video-limit-list" class="mt-4 space-y-2.5 max-h-60 overflow-y-auto pr-1 hide-scrollbar"></div>
+
+      <div class="mt-5 flex justify-between items-center pt-3 border-t border-slate-800">
+        <button onclick="clearOnlyVideos(); closeVideoLimitModal();" class="text-xs text-rose-400 hover:text-rose-300 font-bold px-3 py-1.5 rounded-xl bg-rose-950/40 border border-rose-800/40">
+          🗑️ Purgar los 4 Videos
+        </button>
+        <button onclick="closeVideoLimitModal()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition">
+          Cancelar
+        </button>
+      </div>
     </div>
-</div>
+  </div>
 
-<div id="panel-admin" style="display: none;">
-    <header>
-        <div style="font-family:'Orbitron'; color:var(--gold); font-size:1.1rem;"><i class="fa-solid fa-cubes"></i> CONTROL MAESTRO</div>
-        <div style="color: var(--info); font-size: 0.7rem; font-family: 'Orbitron';">MASTER MOBILITY</div>
-    </header>
-    
-    <div class="container">
-        <div class="form-panel" style="border-top: 3px solid var(--red);">
-            <h2 style="font-size:1.1rem; color:var(--red); margin-bottom:15px;"><i class="fa-solid fa-dumpster-fire"></i> SISTEMA DE DEPURACIÓN (STORAGE)</h2>
-            <p style="color:#aaa; font-size:0.85rem; margin-bottom:20px;">Elimina permanentemente archivos pesados de transacciones para liberar almacenamiento.</p>
-            
-            <form id="form-limpieza" onsubmit="guardarConfigLimpieza(event)">
-                <div class="main-split" style="margin-bottom: 15px;">
-                    <div class="input-group">
-                        <label>Limpieza en Segundo Plano</label>
-                        <select id="clean-status">
-                            <option value="off">DESACTIVADA (Manual)</option>
-                            <option value="on">ACTIVADA (Automática)</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>Retención Obligatoria</label>
-                        <select id="clean-days">
-                            <option value="15">Eliminar fotos > 15 días</option>
-                            <option value="30" selected>Eliminar fotos > 30 días</option>
-                            <option value="60">Eliminar fotos > 60 días</option>
-                            <option value="90">Eliminar fotos > 90 días</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="main-split" style="gap: 15px;">
-                    <button type="submit" class="btn btn-blue"><i class="fa-solid fa-floppy-disk"></i> APLICAR</button>
-                    <button type="button" class="btn btn-red" onclick="ejecutarPurgaManualInmediata()"><i class="fa-solid fa-trash-can"></i> BORRAR TODO AHORA</button>
-                </div>
-            </form>
-        </div>
+  <!-- ======================================================= -->
+  <!-- MODAL: CONECTAR TELEGRAM BOT                            -->
+  <!-- ======================================================= -->
+  <div id="telegram-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-sky-500/40 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="text-sky-400 text-xl">🤖</span>
+          Conectar Bot de Telegram
+        </h3>
+        <button onclick="closeTelegramModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
 
-        <div class="main-split">
-            <div class="form-panel">
-                <h2 style="font-size:1.1rem; margin-bottom:15px;"><i class="fa-solid fa-file-signature"></i> REDACCIÓN DE ACUERDOS</h2>
-                <form onsubmit="crearAcuerdoFirma(event)">
-                    <div class="input-group">
-                        <label>Conductor Destinatario</label>
-                        <select id="select-chofer-contrato" required onchange="cargarPlantillaContrato()"></select>
-                    </div>
-                    <div class="input-group">
-                        <label>Cuerpo Legal (Editable)</label>
-                        <textarea id="contrato-cuerpo" rows="10" placeholder="Selecciona un conductor y el contrato se generará automáticamente aquí..." required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-gold"><i class="fa-solid fa-link"></i> GENERAR ENLACE</button>
-                </form>
-                <div id="wrapper-link-acuerdo" style="display:none;">
-                    <div class="link-box">
-                        <span id="txt-link-acuerdo"></span>
-                        <button class="copy-btn" onclick="copiarLinkAcuerdo()"><i class="fa-regular fa-copy"></i> COPIAR</button>
-                    </div>
-                    <p style="color:var(--success); font-size:0.75rem; margin-top:10px;">¡Generado exitosamente! Selecciona al conductor en la Auditoría para ver sus enlaces.</p>
-                </div>
-            </div>
+      <p class="text-xs text-slate-300 mt-3 leading-relaxed">
+        Pega el Token que te entregó <strong>@BotFather</strong>. Las fotos y textos que los invitados envíen a tu bot se recibirán y proyectarán automáticamente en pantalla gigante.
+      </p>
 
-            <div class="form-panel" style="border-top: 3px solid var(--info);">
-                <h2 style="font-size:1.1rem; color:var(--info); margin-bottom:15px;"><i class="fa-solid fa-magnifying-glass-dollar"></i> AUDITORÍA DE PILOTO</h2>
-                <div class="input-group">
-                    <label>Selecciona Conductor</label>
-                    <select id="select-chofer-historial" onchange="auditarConductorSeleccionado()"></select>
-                </div>
-                
-                <div id="auditoria-vacia" style="color:#555; text-align:center; padding:40px 0;">
-                    <i class="fa-solid fa-chart-pie" style="font-size:3rem; margin-bottom:10px;"></i>
-                    <p>Selecciona un piloto para auditar.</p>
-                </div>
-
-                <div id="auditoria-datos" style="display:none;">
-                    <h3 style="font-family:'Orbitron'; font-size:0.85rem; color:var(--gold); margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;"><i class="fa-solid fa-file-contract"></i> CONTRATOS Y ACUERDOS LEGALES</h3>
-                    <div id="container-contratos-historial" style="max-height: 250px; overflow-y: auto; background:#050505; padding:10px; border-radius:10px; border:1px solid #222; margin-bottom: 20px;"></div>
-
-                    <div class="audit-metrics">
-                        <div class="metric-box">
-                            <p style="font-size:0.7rem; color:#888; font-family:'Orbitron';">DEUDA REGULAR</p>
-                            <h3 id="aud-deuda-reg" style="color:var(--red); font-size:1.3rem;">$0.00</h3>
-                        </div>
-                        <div class="metric-box" style="border-left-color: var(--info);">
-                            <p style="font-size:0.7rem; color:#888; font-family:'Orbitron';">SALDO ARREGLO</p>
-                            <h3 id="aud-deuda-arr" style="color:var(--info); font-size:1.3rem;">$0.00</h3>
-                        </div>
-                    </div>
-                    
-                    <div class="metric-box" style="border-left-color: var(--success); margin-bottom:20px;">
-                        <p style="font-size:0.75rem; color:#888; font-family:'Orbitron';">TOTAL REPORTADO (APROBADO)</p>
-                        <h3 id="aud-total-pagado" style="color:var(--success); font-size:1.3rem;">$0.00</h3>
-                    </div>
-
-                    <h3 style="font-family:'Orbitron'; font-size:0.85rem; color:var(--gold); margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;"><i class="fa-solid fa-calendar-xmark"></i> DÍAS FALTANTES POR PAGAR</h3>
-                    <div id="container-dias-faltantes" style="max-height: 250px; overflow-y: auto; background:#000; padding:10px; border-radius:10px; border:1px solid #222;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="panel-conductor-firma" style="display: none;">
-    <div style="max-width: 650px; margin: 30px auto; padding: 15px;">
-        <div class="form-panel" id="box-firma-legal" style="padding: 25px; border: 2px solid var(--gold);">
-            <h2 style="font-family:'Orbitron'; text-align:center; font-size:1.1rem; margin-bottom:20px;"><i class="fa-solid fa-file-contract"></i> REVISIÓN Y FIRMA</h2>
-            
-            <div id="documento-legal-texto" style="background:#000; border:1px solid #333; padding:15px; border-radius:10px; font-size:0.9rem; line-height:1.6; white-space:pre-wrap; max-height:300px; overflow-y:auto; margin-bottom:25px; color:#ddd; text-align:justify;"></div>
-            
-            <div class="input-group">
-                <div style="background: rgba(211, 47, 47, 0.15); border: 1px solid var(--red); border-left: 4px solid var(--red); padding: 12px; margin-bottom: 15px; border-radius: 5px;">
-                    <p style="color: #ffaaaa; font-size: 0.85rem; font-weight: bold; text-align: center;">
-                        <i class="fa-solid fa-triangle-exclamation"></i> IMPORTANTE: La firma plasmada a continuación debe ser IDÉNTICA a la que aparece en su Cédula de Identidad.
-                    </p>
-                </div>
-
-                <label style="color:var(--info); text-align:center; display:block; font-size:0.8rem;">DIBUJA TU FIRMA EN EL RECUADRO INFERIOR</label>
-                <div class="signature-wrapper">
-                    <canvas id="signature-canvas"></canvas>
-                </div>
-                <button type="button" class="btn btn-red" style="padding:8px; font-size:0.75rem; margin-top:10px; width:auto; margin-left:auto;" onclick="limpiarLienzoFirma()"><i class="fa-solid fa-eraser"></i> REPETIR FIRMA</button>
-            </div>
-
-            <button type="button" class="btn btn-green" id="btn-aceptar-acuerdo" style="margin-top:25px; font-size:1rem;" onclick="procesarEnvioContratoFirmado()"><i class="fa-solid fa-check-double"></i> ACEPTAR Y FIRMAR</button>
-        </div>
-
-        <div class="form-panel" id="box-firma-exito" style="display:none; text-align:center; padding:40px 20px; border-color:var(--success);">
-            <i class="fa-solid fa-circle-check" style="font-size: 4rem; color: var(--success); margin-bottom:20px;"></i>
-            <h2 style="font-family:'Orbitron'; color:var(--success); margin-bottom:15px; font-size:1.2rem;">CONTRATO PROCESADO</h2>
-            <p style="color:#eee; line-height:1.6; font-size:0.95rem;">Tu confirmación y firma manuscrita han sido registradas de forma segura.</p>
-            <p style="color:#888; font-size:0.8rem; margin-top:15px; font-style:italic;">Copia archivada en Master Mobility OS. Ya puedes cerrar esta pestaña.</p>
-        </div>
-    </div>
-</div>
-
-<div id="modal-ver-contrato" class="modal-overlay">
-    <div class="modal-content">
-        <h2 style="color:var(--gold); text-align:center; margin-bottom: 20px; font-size:1.2rem;"><i class="fa-solid fa-file-signature"></i> DOCUMENTO FIRMADO</h2>
-        <div id="ver-cuerpo-contrato" style="white-space:pre-wrap; font-size:0.85rem; line-height:1.6; background:#000; padding:15px; border-radius:10px; border:1px solid #333; color:#ccc;"></div>
-        
-        <div style="margin-top:25px; text-align:center; border-top: 1px dashed #333; padding-top: 20px;">
-            <p style="color:var(--success); font-family:'Orbitron'; font-size:0.8rem; font-weight:bold; margin-bottom:10px;">FIRMA OFICIAL DEL CONDUCTOR:</p>
-            <img id="ver-firma-img" src="" style="background:white; border-radius:10px; width:100%; max-width:350px; border:3px solid #fff;">
-            <p id="ver-fecha-firma" style="color:#888; font-size:0.75rem; margin-top:15px; font-family: monospace;"></p>
-        </div>
-        <div style="display:flex; gap: 15px; margin-top:25px;">
-            <button class="btn btn-blue" id="btn-descarga-pdf" onclick="descargarContratoPDF()"><i class="fa-solid fa-download"></i> DESCARGAR PDF</button>
-            <button class="btn btn-red" onclick="document.getElementById('modal-ver-contrato').style.display='none'"><i class="fa-solid fa-xmark"></i> CERRAR</button>
-        </div>
-    </div>
-</div>
-
-<div id="pdf-export-content" style="display:none; padding: 50px; color: #111; background: #ffffff; width: 850px; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; position: relative;">
-    
-    <div style="border-bottom: 3px solid #e6b800; padding-bottom: 15px; margin-bottom: 35px; display: flex; justify-content: space-between; align-items: flex-end;">
+      <div class="mt-4 space-y-3">
         <div>
-            <h1 style="font-family: 'Orbitron', sans-serif; font-size: 26px; margin: 0; color: #000; letter-spacing: 1px;">MASTER MOBILITY OS</h1>
-            <p style="margin: 5px 0 0 0; font-size: 13px; color: #555; text-transform: uppercase;">Centro de Control Maestro Satélite • División Legal</p>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Bot Token de Telegram</label>
+          <input type="text" id="tg-botToken" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-sky-400 outline-none font-mono">
         </div>
-        <div style="text-align: right;">
-            <p style="margin: 0; font-size: 10px; color: #888;">CÓDIGO DE DOCUMENTO:</p>
-            <p style="margin: 0; font-size: 14px; font-weight: bold; font-family: monospace; color: #d32f2f;">DOC-<span id="pdf-doc-id">PENDIENTE</span></p>
+      </div>
+
+      <div class="mt-5 flex justify-end gap-3 pt-3 border-t border-slate-800">
+        <button onclick="closeTelegramModal()" class="px-4 py-2 text-xs rounded-xl text-slate-400 hover:text-white">Cancelar</button>
+        <button onclick="saveTelegramConfig()" class="px-5 py-2 text-xs font-bold rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-lg shadow-sky-500/20 transition">Activar Recepción</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- MODAL: CÓDIGO QR PARA INVITADOS                        -->
+  <!-- ======================================================= -->
+  <div id="guest-qr-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl relative text-center">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span class="text-emerald-400 text-lg">📱</span>
+          QR para Invitados
+        </h3>
+        <button onclick="closeGuestQrModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-300 mt-3 leading-relaxed">
+        Los invitados solo deben escanear este código con su celular para enviar fotos y dedicatorias directamente a tu moderación.
+      </p>
+
+      <!-- Contenedor del QR -->
+      <div class="mt-5 flex justify-center">
+        <div id="guest-qrcode-canvas" class="p-3 bg-white rounded-2xl shadow-xl flex items-center justify-center min-w-[190px] min-h-[190px]"></div>
+      </div>
+
+      <div class="mt-4">
+        <input type="text" id="guest-portal-url-display" readonly class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-400 text-center font-mono select-all">
+      </div>
+
+      <div class="mt-4 flex gap-2">
+        <button onclick="copyGuestPortalLink()" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Copiar Link
+        </button>
+        <button onclick="closeGuestQrModal()" class="px-4 py-2 text-xs rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- MODAL: CONFIGURACIÓN FIREBASE                           -->
+  <!-- ======================================================= -->
+  <div id="firebase-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative">
+      <h3 class="text-xl font-bold text-white flex items-center gap-2">
+        <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Conectar Firebase en la Nube
+      </h3>
+      <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+        Ingresa tus claves de Firebase si vas a controlar a distancia con internet. Si estás en red Wi-Fi local sin internet, déjalo vacío y funcionará automáticamente en <strong>Red Local</strong>.
+      </p>
+
+      <div class="mt-4 space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">API Key</label>
+          <input type="text" id="fb-apiKey" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 outline-none">
         </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Database URL (Realtime DB)</label>
+          <input type="text" id="fb-dbUrl" placeholder="https://tu-proyecto.firebaseio.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Project ID</label>
+          <input type="text" id="fb-projectId" placeholder="mi-evento-123" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 outline-none">
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-3 justify-end">
+        <button onclick="closeFirebaseModal()" class="px-4 py-2 text-xs rounded-xl text-slate-400 hover:text-white">Cerrar</button>
+        <button onclick="saveFirebaseConfig()" class="px-5 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition">Guardar y Activar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- BARRA DE NAVEGACIÓN SUPERIOR (ADMIN)                    -->
+  <!-- ======================================================= -->
+  <header id="admin-navbar" class="h-auto min-h-[3.5rem] py-2 bg-slate-900/95 border-b border-slate-800 px-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 z-40 relative">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 shrink-0">
+        EP
+      </div>
+      <div>
+        <h1 class="text-xs sm:text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
+          EventCast Pro
+          <span class="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-semibold">Wanbo</span>
+        </h1>
+      </div>
     </div>
 
-    <h2 style="text-align:center; font-size: 18px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Acuerdo Legal y Términos de Asignación</h2>
-    
-    <div id="pdf-cuerpo" style="white-space: pre-wrap; font-size: 14px; line-height: 1.8; text-align: justify; color: #222; margin-bottom: 60px;"></div>
-    
-    <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
-        <div style="text-align: center; width: 40%;">
-            <div style="height: 80px; border-bottom: 1px solid #000; margin-bottom: 10px; display:flex; align-items:flex-end; justify-content:center;">
-                <span style="font-family: 'Orbitron', sans-serif; color: #ccc; font-size: 22px; margin-bottom: 10px;">M. M. OS</span>
+    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+      <div class="hidden lg:flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-full text-[11px]">
+        <span id="nav-sync-indicator" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="nav-sync-label" class="text-slate-300 font-medium">Red Local</span>
+      </div>
+
+      <div class="bg-slate-950 p-0.5 sm:p-1 rounded-xl border border-slate-800 flex text-xs">
+        <button id="btn-view-admin" onclick="switchView('admin')" class="px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-950 text-xs transition">
+          Admin
+        </button>
+        <button id="btn-view-display" onclick="switchView('display')" class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white text-xs transition">
+          Proyector
+        </button>
+      </div>
+
+      <!-- Botón Copiar Link Limpio -->
+      <button onclick="copyProjectorLink()" title="Copia el enlace exclusivo para el proyector" class="flex items-center gap-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-amber-500/40 transition">
+        <svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        <span>Link Wanbo</span>
+      </button>
+
+      <!-- Botón QR Invitados -->
+      <button onclick="openGuestQrModal()" title="Generar código QR para invitados" class="flex items-center gap-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-emerald-500/40 transition">
+        <span>📱 QR Invitados</span>
+      </button>
+
+      <!-- Botón Bot de Telegram -->
+      <button onclick="openTelegramModal()" title="Configurar Telegram Bot" class="p-1.5 sm:p-2 rounded-xl bg-sky-950/50 hover:bg-sky-900/60 text-sky-300 border border-sky-600/40 transition">
+        <span class="text-xs">🤖 Telegram</span>
+      </button>
+
+      <!-- Botón Firebase -->
+      <button onclick="openFirebaseModal()" title="Configurar Firebase" class="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+
+      <!-- Botón Pantalla Completa -->
+      <button onclick="toggleFullScreen()" title="Pantalla Completa" class="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======================================================= -->
+  <!-- VISTA 1: PANEL ADMINISTRADOR                            -->
+  <!-- ======================================================= -->
+  <main id="admin-view" class="h-[calc(100%-3.75rem)] overflow-y-auto p-3 sm:p-6 lg:p-8 bg-slate-950">
+    <div class="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+
+      <!-- BANNER DIRECTO EN MÓVIL: ENLACE PARA EL WANBO -->
+      <div class="bg-gradient-to-r from-amber-500/15 via-slate-900 to-sky-500/15 border border-amber-500/30 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-lg">
+            📽️
+          </div>
+          <div>
+            <h4 class="text-xs sm:text-sm font-bold text-white">Enlace Exclusivo para el Proyector Wanbo</h4>
+            <p class="text-[11px] text-slate-400">Abre este enlace en el navegador del proyector (sin menús ni botones)</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <button onclick="copyProjectorLink()" class="flex-1 sm:flex-initial py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-amber-500/20">
+            <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Copiar Enlace Proyector
+          </button>
+          <button onclick="openGuestQrModal()" class="py-2 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 font-bold text-xs border border-emerald-500/40 transition">
+            📱 QR Invitados
+          </button>
+          <button onclick="openTelegramModal()" class="py-2 px-3 rounded-xl bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 font-bold text-xs border border-sky-500/40 transition">
+            🤖 Telegram
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Resumen & Seguros Activos -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total en Cola</span>
+          <div class="flex items-baseline justify-between mt-2">
+            <span id="stat-total-slides" class="text-3xl font-black text-white">0</span>
+            <span class="text-xs text-amber-400 font-medium">Slides</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-indigo-500/50 transition" onclick="openVideoLimitModal()">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Videos Activos</span>
+            <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full font-bold">Gestionar ⚙️</span>
+          </div>
+          <div class="flex items-baseline justify-between mt-2">
+            <span id="stat-video-count" class="text-3xl font-black text-indigo-400">0/4</span>
+            <span class="text-xs text-slate-400">Máx. 4 clips</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Compresor HD</span>
+            <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Activo</span>
+          </div>
+          <div class="flex items-baseline justify-between mt-2">
+            <span class="text-xl font-bold text-emerald-400">Auto Canvas</span>
+            <span class="text-[11px] text-slate-400">~250KB / foto</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Caché Blob</span>
+            <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">Anti-Consumo</span>
+          </div>
+          <div class="flex items-baseline justify-between mt-2">
+            <span class="text-xl font-bold text-amber-400">Descarga Única</span>
+            <span class="text-[11px] text-slate-400">Cero rebote</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANDEJA DE MODERACIÓN (APROBAR / RECHAZAR FOTOS Y MENSAJES) -->
+      <section id="moderation-container" class="bg-slate-900 border-2 border-sky-500/30 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-sm">
+              🛡️
+            </span>
+            <div>
+              <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                Bandeja de Moderación (Telegram & Envíos)
+                <span id="badge-pending-count" class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950">0 pendientes</span>
+              </h3>
+              <p class="text-[11px] text-slate-400">Revisa y aprueba fotos o dedicatorias antes de que aparezcan en el proyector</p>
             </div>
-            <p style="font-weight: bold; margin: 0; font-size: 13px;">Representante Legal</p>
-            <p style="font-size: 11px; color: #666; margin: 2px 0 0 0;">Master Mobility OS</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 select-none">
+              <input type="checkbox" id="chk-moderation-mode" checked onchange="toggleModerationMode(this.checked)" class="accent-amber-500 w-4 h-4 rounded">
+              <span class="font-medium">Exigir Aprobación</span>
+            </label>
+            <button onclick="clearPendingModeration()" class="px-2.5 py-1.5 rounded-xl text-xs text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition">
+              Descartar Todo
+            </button>
+          </div>
         </div>
-        
-        <div style="text-align: center; width: 40%;">
-            <div style="height: 80px; border-bottom: 1px solid #000; margin-bottom: 10px; display:flex; align-items:flex-end; justify-content:center; padding-bottom: 5px;">
-                <img id="pdf-firma-export" src="" style="max-width: 100%; max-height: 75px; object-fit: contain;">
-            </div>
-            <p style="font-weight: bold; margin: 0; font-size: 13px;">Firma Oficial del Conductor</p>
-            <p id="pdf-nombre-conductor" style="font-size: 11px; color: #666; margin: 2px 0 0 0; text-transform: uppercase; font-weight: bold;"></p>
+
+        <div id="pending-moderation-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-72 overflow-y-auto pr-1 hide-scrollbar">
+          <div class="col-span-full py-8 text-center text-slate-500 text-xs">
+            ✨ No hay envíos pendientes por revisar. Lo que manden por Telegram aparecerá aquí primero.
+          </div>
         </div>
-    </div>
-    
-    <div style="margin-top: 70px; border-top: 1px solid #ddd; padding-top: 15px; position: relative;">
-        <p id="pdf-fecha-export" style="text-align:center; font-size: 11px; margin: 0; color: #555; font-family: monospace;"></p>
-        <p style="text-align:center; font-size: 10px; margin: 8px 0 0 0; color: #999;">
-            Este documento ha sido generado, validado y firmado electrónicamente mediante encriptación.<br>Posee plena validez legal a través del ecosistema Master Mobility OS.
-        </p>
-    </div>
-</div>
+      </section>
 
-<script>
-// Configuración exacta de tu base de datos de Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyB2tSowCQwfncdpjQOYEYOEKLrDaeeap48",
-    authDomain: "personal-car-19faa.firebaseapp.com",
-    projectId: "personal-car-19faa",
-    storageBucket: "personal-car-19faa.firebasestorage.app",
-    messagingSenderId: "172539533131",
-    appId: "1:172539533131:web:6d56ca847239e989ca7ace"
-};
+      <!-- Cuadrícula Principal -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-const db = firebase.firestore();
-const storage = firebase.storage();
-
-let appData = { conductores: [], vehiculos: [], pagos: [] };
-let currentTgConfig = { token: '', chat: '' };
-let signaturePad = null;
-let contratoUrlId = new URLSearchParams(window.location.search).get('contract');
-
-window.addEventListener('DOMContentLoaded', () => {
-    db.collection('sistema').doc('config_portal').onSnapshot(doc => {
-        if (doc.exists) {
-            currentTgConfig.token = doc.data().tgToken || '';
-            currentTgConfig.chat = doc.data().tgChat || '';
-        }
-    });
-
-    if (contratoUrlId) {
-        document.getElementById('panel-conductor-firma').style.display = 'block';
-        inicializarLienzoFirmaDriver();
-    } else {
-        document.getElementById('panel-login-admin').style.display = 'block';
-    }
-});
-
-function verificarPasswordAdmin(e) {
-    e.preventDefault();
-    if (document.getElementById('pass-modulo').value === "507Admin") {
-        document.getElementById('panel-login-admin').style.display = 'none';
-        document.getElementById('panel-admin').style.display = 'block';
-        conectarBaseDatosMaestra();
-    } else {
-        alert("Contraseña incorrecta de Administrador.");
-    }
-}
-
-function conectarBaseDatosMaestra() {
-    db.collection('vehiculos').onSnapshot(snap => {
-        appData.vehiculos = [];
-        snap.forEach(doc => appData.vehiculos.push({ id: doc.id, ...doc.data() }));
-        if(document.getElementById('select-chofer-historial').value) auditarConductorSeleccionado();
-    });
-
-    db.collection('pagos').onSnapshot(snap => {
-        appData.pagos = [];
-        snap.forEach(doc => appData.pagos.push({ id: doc.id, ...doc.data() }));
-        if(document.getElementById('select-chofer-historial').value) auditarConductorSeleccionado();
-    });
-
-    db.collection('conductores').onSnapshot(snap => {
-        appData.conductores = [];
-        snap.forEach(doc => appData.conductores.push({ id: doc.id, ...doc.data() }));
-        
-        const selContrato = document.getElementById('select-chofer-contrato');
-        const selHistorial = document.getElementById('select-chofer-historial');
-        const valContrato = selContrato.value;
-        const valHistorial = selHistorial.value;
-        
-        const opcionesHtml = '<option value="">Seleccione un conductor...</option>' + 
-            appData.conductores.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        <!-- PANEL IZQUIERDO: FORMULARIO Y VISTA PREVIA (7 Columnas) -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
             
-        selContrato.innerHTML = opcionesHtml;
-        selHistorial.innerHTML = opcionesHtml;
-        
-        if (valContrato) selContrato.value = valContrato;
-        if (valHistorial) selHistorial.value = valHistorial;
-        if(valHistorial) auditarConductorSeleccionado();
-    });
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Nueva Publicación
+              </h2>
+              
+              <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                <button type="button" onclick="setAddType('text')" id="tab-type-text" class="px-3 py-1.5 rounded-lg font-bold bg-amber-500 text-slate-950 transition">
+                  ✍️ Dedicatoria
+                </button>
+                <button type="button" onclick="setAddType('image')" id="tab-type-image" class="px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition">
+                  📷 Foto HD
+                </button>
+                <button type="button" onclick="setAddType('video')" id="tab-type-video" class="px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition">
+                  🎬 Video Clip
+                </button>
+              </div>
+            </div>
 
-    db.collection('sistema').doc('limpieza_config').get().then(doc => {
-        if(doc.exists) {
-            document.getElementById('clean-status').value = doc.data().status || 'off';
-            document.getElementById('clean-days').value = doc.data().days || '30';
-            if(doc.data().status === 'on') {
-                ejecutarDepuracionAutomaticaFondo(parseInt(doc.data().days || 30));
-            }
-        }
-    });
-}
-
-function auditarConductorSeleccionado() {
-    const id = document.getElementById('select-chofer-historial').value;
-    const panelVacio = document.getElementById('auditoria-vacia');
-    const panelDatos = document.getElementById('auditoria-datos');
-    const containerDias = document.getElementById('container-dias-faltantes');
-    const containerContratos = document.getElementById('container-contratos-historial');
-
-    if (!id) {
-        panelVacio.style.display = 'block';
-        panelDatos.style.display = 'none';
-        return;
-    }
-
-    panelVacio.style.display = 'none';
-    panelDatos.style.display = 'block';
-
-    const c = appData.conductores.find(x => x.id === id);
-    if (!c) return;
-
-    db.collection('contratos_arreglos_firmas').where('choferId', '==', id).get().then(snap => {
-        containerContratos.innerHTML = '';
-        if(snap.empty) {
-            containerContratos.innerHTML = '<p style="color:#666; font-size:0.8rem; text-align:center;">No hay contratos generados para este conductor.</p>';
-        } else {
-            snap.forEach(doc => {
-                const d = doc.data();
-                const urlUnica = `${window.location.origin}${window.location.pathname}?contract=${doc.id}`;
-                
-                if(d.firmado) {
-                    containerContratos.innerHTML += `
-                        <div style="background:#0a0a0a; padding:15px; border:1px solid var(--success); border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                            <div>
-                                <span class="badge bg-green" style="background:var(--success); color:black;"><i class="fa-solid fa-check"></i> FIRMADO</span>
-                                <p style="font-size:0.75rem; color:#888; margin-top:5px;">Emitido: ${d.fechaCreacion || 'N/A'}</p>
-                            </div>
-                            <button class="btn btn-blue" style="padding:8px 12px; font-size:0.7rem; width:auto;" onclick="verContratoFirmado('${doc.id}')"><i class="fa-solid fa-eye"></i> VER</button>
-                        </div>`;
-                } else {
-                    containerContratos.innerHTML += `
-                        <div style="background:#0a0a0a; padding:15px; border:1px solid var(--orange); border-radius:8px; margin-bottom:10px;">
-                            <span class="badge" style="background:var(--orange); color:white;"><i class="fa-solid fa-clock"></i> PENDIENTE DE FIRMA</span>
-                            <p style="font-size:0.75rem; color:#888; margin:5px 0 10px 0;">Emitido: ${d.fechaCreacion || 'N/A'}</p>
-                            <div style="display:flex; gap:5px;">
-                                <input type="text" value="${urlUnica}" readonly style="flex:1; padding:8px; font-size:0.75rem; background:#000; border:1px solid #333; color:var(--info);">
-                                <button class="btn btn-gold" style="padding:8px; font-size:0.7rem; width:auto;" onclick="navigator.clipboard.writeText('${urlUnica}'); alert('Enlace copiado. ¡Envíalo al chofer!');"><i class="fa-solid fa-copy"></i></button>
-                            </div>
-                        </div>`;
-                }
-            });
-        }
-    });
-
-    const deudReg = parseFloat(c.deuda) || 0;
-    const arrTot = parseFloat(c.arreglo_deuda_total) || 0;
-    const arrPag = parseFloat(c.arreglo_pagado) || 0;
-    const deudArr = (c.arreglo_activo === 'si' && arrTot > arrPag) ? (arrTot - arrPag) : 0;
-    
-    const misPagosValidos = appData.pagos.filter(p => p.conductor_id === id && p.estado === 'aprobado');
-    const totalRecaudado = misPagosValidos.reduce((acc, p) => acc + parseFloat(p.monto_normal !== undefined ? p.monto_normal : p.monto), 0);
-
-    document.getElementById('aud-deuda-reg').innerText = `$${deudReg.toFixed(2)}`;
-    document.getElementById('aud-deuda-arr').innerText = `$${deudArr.toFixed(2)}`;
-    document.getElementById('aud-total-pagado').innerText = `$${totalRecaudado.toFixed(2)}`;
-
-    containerDias.innerHTML = '';
-    if(!c.auto_asignado || c.auto_asignado === 'Ninguno') {
-        containerDias.innerHTML = '<p style="color:#666; text-align:center; font-size:0.8rem; padding:10px;">Este conductor no registra vehículo asignado para auditar asistencia.</p>';
-        return;
-    }
-
-    const auto = appData.vehiculos.find(v => v.placa === c.auto_asignado);
-    const tarifaDiaria = auto && auto.tarifa ? parseFloat(auto.tarifa) : 25;
-    
-    let fechaInicio = c.ts ? new Date(c.ts) : new Date();
-    let fechaFin = new Date();
-    fechaInicio.setHours(0,0,0,0);
-    fechaFin.setHours(0,0,0,0);
-
-    let diasFaltantesConteo = 0;
-    let indexDate = new Date(fechaInicio);
-
-    while (indexDate <= fechaFin) {
-        const stringFecha = indexDate.toLocaleDateString();
-        const reportoPago = appData.pagos.some(p => p.conductor_id === id && p.fecha === stringFecha && (p.estado === 'aprobado' || p.estado === 'pendiente'));
-        
-        if (!reportoPago) {
-            diasFaltantesConteo++;
-            containerDias.innerHTML += `
-                <div class="missed-day-tag">
-                    <span><i class="fa-solid fa-calendar-minus"></i> ${stringFecha}</span>
-                    <span style="font-weight:bold; color:var(--red);">Faltó (-$${tarifaDiaria})</span>
+            <!-- FORMULARIO 1: DEDICATORIAS -->
+            <div id="form-text-section" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  1. Prefijo Superior / Distintivo
+                </label>
+                <div class="flex flex-wrap gap-2 mb-2">
+                  <button type="button" onclick="setQuickBadge('🎂 Dedicatoria de Cumpleaños')" class="px-2.5 py-1 text-[11px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">🎂 Cumpleaños</button>
+                  <button type="button" onclick="setQuickBadge('🎧 Aviso de Cabina de DJ')" class="px-2.5 py-1 text-[11px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">🎧 Cabina DJ</button>
+                  <button type="button" onclick="setQuickBadge('💍 Bodas de Plata')" class="px-2.5 py-1 text-[11px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">💍 Bodas</button>
+                  <button type="button" onclick="setQuickBadge('🎉 Pista de Baile')" class="px-2.5 py-1 text-[11px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">🎉 Pista</button>
                 </div>
-            `;
-        }
-        indexDate.setDate(indexDate.getDate() + 1);
-    }
+                <input type="text" id="input-badge" placeholder="Ej: Dedicatoria de Cumpleaños, Aviso del DJ..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-amber-400 outline-none transition" oninput="updateLivePreview()">
+              </div>
 
-    if (diasFaltantesConteo === 0) {
-        containerDias.innerHTML = '<p style="color:var(--success); text-align:center; font-size:0.85rem; padding:15px;"><i class="fa-solid fa-check-double"></i> Récord perfecto. No registra días pendientes de pago.</p>';
-    }
-}
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  2. Mensaje Central Destacado
+                </label>
+                <textarea id="input-message" rows="3" placeholder="¡Muchas felicidades María en tus 15 años! Que todos tus sueños se hagan realidad hoy y siempre." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-amber-400 outline-none transition resize-none" oninput="updateLivePreview()"></textarea>
+              </div>
 
-async function guardarConfigLimpieza(e) {
-    e.preventDefault();
-    const status = document.getElementById('clean-status').value;
-    const days = document.getElementById('clean-days').value;
-    try {
-        await db.collection('sistema').doc('limpieza_config').set({ status, days: parseInt(days) });
-        alert("Configuración de mantenimiento guardada exitosamente.");
-    } catch(err) { alert(err.message); }
-}
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  3. Firma / De parte de (Abajo)
+                </label>
+                <input type="text" id="input-signature" placeholder="Ej: Mesa 3 • Familia y Amigos de Chiriquí" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-amber-400 outline-none transition" oninput="updateLivePreview()">
+              </div>
 
-async function ejecutarPurgaManualInmediata() {
-    if(!confirm("⚠️ ADVERTENCIA CRÍTICA:\n¿Estás seguro de que deseas ELIMINAR TODAS las imágenes de pagos, alertas y checklists almacenadas en el servidor ahora mismo?\nEsta acción liberará espacio de forma inmediata y no se puede deshacer.")) return;
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  4. Ambiente de Color para Proyección
+                </label>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <button type="button" onclick="setThemeStyle('gold')" class="theme-btn p-2 rounded-xl border border-amber-500/50 bg-amber-950/30 text-amber-300 text-xs font-bold text-center hover:bg-amber-900/40">Dorado Gala</button>
+                  <button type="button" onclick="setThemeStyle('neon')" class="theme-btn p-2 rounded-xl border border-purple-500/30 bg-purple-950/20 text-purple-300 text-xs font-bold text-center hover:bg-purple-900/40">Neón DJ</button>
+                  <button type="button" onclick="setThemeStyle('rose')" class="theme-btn p-2 rounded-xl border border-pink-500/30 bg-pink-950/20 text-pink-300 text-xs font-bold text-center hover:bg-pink-900/40">Romance</button>
+                  <button type="button" onclick="setThemeStyle('sapphire')" class="theme-btn p-2 rounded-xl border border-blue-500/30 bg-blue-950/20 text-blue-300 text-xs font-bold text-center hover:bg-blue-900/40">Zafiro VIP</button>
+                  <button type="button" onclick="setThemeStyle('emerald')" class="theme-btn p-2 rounded-xl border border-emerald-500/30 bg-emerald-950/20 text-emerald-300 text-xs font-bold text-center hover:bg-emerald-900/40">Esmeralda</button>
+                </div>
+                <input type="hidden" id="selected-theme" value="gold">
+              </div>
+            </div>
+
+            <!-- FORMULARIO 2: SUBIDA DE FOTO O VIDEO -->
+            <div id="form-media-section" class="hidden space-y-4">
+              <!-- SELECTOR DE DURACIÓN DE VIDEO CORTADO AUTOMÁTICO -->
+              <div id="video-trim-setting-box" class="hidden p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                    <span>✂️</span>
+                    Duración Máxima de Reproducción (Corte Automático)
+                  </span>
+                  <span id="label-video-trim" class="text-xs font-bold text-amber-400">20 seg</span>
+                </div>
+                <div class="grid grid-cols-4 gap-2">
+                  <button type="button" onclick="setVideoTrimDuration(15)" id="btn-trim-15" class="py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold text-slate-300 hover:bg-indigo-900/50">15s</button>
+                  <button type="button" onclick="setVideoTrimDuration(20)" id="btn-trim-20" class="py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold bg-indigo-600 text-white">20s</button>
+                  <button type="button" onclick="setVideoTrimDuration(30)" id="btn-trim-30" class="py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold text-slate-300 hover:bg-indigo-900/50">30s</button>
+                  <button type="button" onclick="setVideoTrimDuration(40)" id="btn-trim-40" class="py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold text-slate-300 hover:bg-indigo-900/50">40s</button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2">Si el video original dura más, la pantalla lo reproducirá exactamente hasta el segundo seleccionado y saltará a la siguiente foto.</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Seleccionar Archivo desde Computadora / Teléfono
+                </label>
+                <div class="relative border-2 border-dashed border-slate-800 hover:border-amber-400/50 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-950/50" onclick="document.getElementById('input-file-media').click()">
+                  <input type="file" id="input-file-media" class="hidden" accept="image/*,video/mp4,video/webm" onchange="handleLocalFileSelected(event)">
+                  <svg class="w-10 h-10 mx-auto text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                  <p class="text-sm text-slate-300 font-semibold" id="file-upload-prompt">Haz clic para elegir Foto o Video corto</p>
+                  <p class="text-xs text-slate-500 mt-1">Fotos: Auto-compresión Canvas a 1080p | Videos: MP4/WebM máx 15MB</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  O pegar URL directa web (Opcional)
+                </label>
+                <input type="url" id="input-media-url" placeholder="https://ejemplo.com/foto.jpg" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-amber-400 outline-none transition" oninput="handleUrlInput(this.value)">
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Distintivo en Foto</label>
+                  <input type="text" id="input-media-badge" placeholder="Ej: Foto en Vivo, Mesa 5..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 outline-none" oninput="updateLivePreview()">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Título / Dedicatoria corta</label>
+                  <input type="text" id="input-media-title" placeholder="Ej: ¡Los novios en la pista!" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 outline-none" oninput="updateLivePreview()">
+                </div>
+              </div>
+            </div>
+
+            <!-- VISTA PREVIA INTERACTIVA EN VIVO -->
+            <div class="border-t border-slate-800 pt-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                  Vista Previa antes de Enviar a Proyección
+                </span>
+                <span class="text-[11px] text-slate-500">Relación 16:9 (Wanbo Full HD)</span>
+              </div>
+
+              <div id="preview-box" class="w-full aspect-video rounded-2xl overflow-hidden relative shadow-2xl flex items-center justify-center p-6 border border-slate-800 transition-all duration-300 bg-gradient-to-br from-slate-950 via-amber-950/40 to-slate-950">
+                <div id="preview-media-container" class="absolute inset-0 hidden">
+                  <img id="preview-img" src="" alt="preview" class="w-full h-full object-cover">
+                  <video id="preview-video" src="" autoplay muted loop class="w-full h-full object-cover hidden"></video>
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30"></div>
+                </div>
+
+                <div id="preview-text-container" class="relative z-10 text-center max-w-lg space-y-3">
+                  <span id="preview-badge" class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40 backdrop-blur-md">
+                    🎂 Dedicatoria de Cumpleaños
+                  </span>
+                  <p id="preview-message" class="text-lg sm:text-xl font-serif text-white text-shadow-gold leading-relaxed">
+                    ¡Muchas felicidades María en tus 15 años! Que todos tus sueños se hagan realidad hoy y siempre.
+                  </p>
+                  <p id="preview-signature" class="text-xs font-medium text-amber-200/90 tracking-wide">
+                    — Mesa 3 • Familia y Amigos —
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <button type="button" onclick="submitNewSlide()" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-sm tracking-wide shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition active:scale-[0.99]">
+                <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                ENVIAR A LA PROYECCIÓN AHORA
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PANEL DERECHO: COLA DE DIAPOSITIVAS & CONTROLES EN VIVO (5 Columnas) -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col h-full justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-bold text-white">Cola de Proyección</h3>
+                  <span id="badge-queue-count" class="bg-amber-500/20 text-amber-400 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                  <button onclick="openVideoLimitModal()" title="Ver y gestionar los videos activos" class="px-2.5 py-1 text-xs rounded-lg bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900 transition font-medium">
+                    🎬 Videos
+                  </button>
+                  <button onclick="clearAllSlides()" title="Vaciar toda la lista" class="px-2.5 py-1 text-xs rounded-lg bg-rose-950/40 text-rose-300 border border-rose-800/40 hover:bg-rose-900/60 transition font-medium">
+                    Vaciar Todo
+                  </button>
+                </div>
+              </div>
+
+              <div id="slides-queue-list" class="mt-4 space-y-2.5 max-h-[480px] overflow-y-auto pr-1 hide-scrollbar"></div>
+            </div>
+
+            <!-- Controles Manuales -->
+            <div class="mt-6 pt-4 border-t border-slate-800">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <button onclick="prevSlide()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                  </button>
+                  <button id="btn-toggle-play" onclick="togglePlayPause()" class="px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 hover:bg-amber-400 transition">
+                    <svg id="icon-play-state" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <span id="text-play-state">Pausar</span>
+                  </button>
+                  <button onclick="nextSlide()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-slate-400 font-medium">Seg / Foto:</label>
+                  <select id="select-slide-duration" onchange="setSlideDuration(this.value)" class="bg-slate-950 border border-slate-800 text-xs text-amber-400 rounded-xl px-2.5 py-1.5 outline-none font-bold">
+                    <option value="5000">5 seg</option>
+                    <option value="7000" selected>7 seg</option>
+                    <option value="10000">10 seg</option>
+                    <option value="15000">15 seg</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 2: PANTALLA COMPLETA DEL PROYECTOR                  -->
+  <!-- ========================================================= -->
+  <section id="display-view" class="fixed inset-0 z-50 bg-black flex items-center justify-center overflow-hidden hidden w-full h-full">
     
-    const carpetas = ['pagos', 'alertas_imagenes', 'checklist'];
-    let borrados = 0;
-    
-    for (let carpeta of carpetas) {
-        try {
-            const listRef = storage.ref(carpeta);
-            const res = await listRef.listAll();
-            for (let item of res.items) {
-                await item.delete();
-                borrados++;
-            }
-        } catch(e) { console.log("Carpeta vacía o sin acceso: " + carpeta); }
-    }
-    alert(`Mantenimiento manual finalizado. Se eliminaron con éxito ${borrados} archivos pesados del servidor.`);
-}
+    <div id="projector-image-wrap" class="absolute inset-0 w-full h-full">
+      <img id="projector-image-bg-a" src="" alt="" class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-0 scale-110 transition-opacity duration-1000">
+      <img id="projector-image-bg-b" src="" alt="" class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-0 scale-110 transition-opacity duration-1000">
 
-async function ejecutarDepuracionAutomaticaFondo(diasLimite) {
-    const msLimite = diasLimite * 24 * 60 * 60 * 1000;
-    const tiempoCorte = Date.now() - msLimite;
+      <img id="projector-image-a" src="" alt="Proyección" class="absolute inset-0 w-full h-full object-contain animate-kenburns transition-opacity duration-1000 opacity-0 z-10">
+      <img id="projector-image-b" src="" alt="Proyección" class="absolute inset-0 w-full h-full object-contain animate-kenburns transition-opacity duration-1000 opacity-0 z-10">
+      
+      <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/60 pointer-events-none z-10"></div>
+    </div>
 
-    db.collection('alertas_temporizador').where('createdAt', '<', tiempoCorte).get().then(snap => {
-        snap.forEach(async (doc) => {
-            if(doc.data().foto) { try{ await storage.refFromURL(doc.data().foto).delete(); }catch(e){} }
-            await db.collection('alertas_temporizador').doc(doc.id).delete();
-        });
-    });
-}
+    <div id="projector-video-wrap" class="absolute inset-0 w-full h-full hidden bg-black z-20 flex items-center justify-center">
+      <video id="projector-video" class="w-full h-full max-w-full max-h-full object-contain" playsinline preload="auto"></video>
+    </div>
 
-function cargarPlantillaContrato() {
-    const choferId = document.getElementById('select-chofer-contrato').value;
-    if (!choferId) return;
+    <div id="projector-text-wrap" class="relative z-30 w-full max-w-6xl px-4 sm:px-8 md:px-12 py-6 flex flex-col items-center justify-center text-center transition-all duration-700">
+      <div class="space-y-4 sm:space-y-6 w-full">
+        <div>
+          <span id="proj-badge" class="inline-block rounded-full fluid-proj-badge font-cinzel font-black uppercase tracking-widest border border-amber-500/50 bg-amber-950/50 text-amber-300 backdrop-blur-md shadow-2xl transition-all">
+            🎂 Dedicatoria de Cumpleaños
+          </span>
+        </div>
 
-    const chofer = appData.conductores.find(c => c.id === choferId);
-    if (!chofer) return;
+        <h2 id="proj-message" class="fluid-proj-message font-serif text-white font-extrabold text-shadow-gold px-2 break-words">
+          ¡Felicidades en tu día especial!
+        </h2>
 
-    const cedula = chofer.cedula || "_______________"; 
-    const placa = chofer.auto_asignado && chofer.auto_asignado !== 'Ninguno' ? chofer.auto_asignado : "_______________";
+        <p id="proj-signature" class="fluid-proj-signature font-sans font-semibold text-amber-200/90 tracking-wide text-shadow-subtle px-2">
+          — Familia y Amigos —
+        </p>
+      </div>
+    </div>
 
-    const plantilla = `Conste por el presente documento, el acuerdo celebrado entre MASTER MOBILITY (en adelante "La Empresa") y el señor(a) ${chofer.nombre}, portador del documento de identidad ${cedula} (en adelante "El Conductor").
+    <!-- Barra Inferior -->
+    <div class="absolute bottom-0 inset-x-0 z-30 fluid-bottom-bar bg-gradient-to-t from-black via-black/95 to-transparent flex items-center justify-between text-white gap-2">
+      <div class="flex items-center gap-2 sm:gap-3 overflow-hidden flex-1 mr-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+        <span class="text-[10px] sm:text-xs uppercase font-extrabold tracking-widest text-amber-400 shrink-0">EN VIVO</span>
+        <div class="overflow-hidden whitespace-nowrap w-full">
+          <p id="projector-marquee" class="inline-block text-[11px] sm:text-sm font-semibold text-slate-300 animate-marquee">
+            Bienvenidos al Evento • Envía tus fotos y dedicatorias para que salgan en pantalla gigante • ¡Que siga la fiesta!
+          </p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2 shrink-0">
+        <span id="projector-clock" class="text-xs sm:text-sm md:text-base font-bold font-mono tracking-wider text-amber-400 bg-black/80 px-2 sm:px-3 py-1 rounded-xl border border-white/10 shadow-lg">
+          00:00:00
+        </span>
+      </div>
+    </div>
 
-PRIMERO: OBJETO DEL ACUERDO
-La Empresa asigna al Conductor el vehículo con placa ${placa} bajo las condiciones y tarifas establecidas en el sistema.
+    <div class="absolute top-0 inset-x-0 h-1 sm:h-1.5 bg-black/40 z-30">
+      <div id="slide-progress-bar" class="h-full bg-gradient-to-r from-amber-500 to-amber-300 w-0 transition-all duration-100 ease-linear"></div>
+    </div>
 
-SEGUNDO: RESPONSABILIDADES
-1. El Conductor se compromete a mantener el vehículo en óptimas condiciones físicas y mecánicas.
-2. Cumplir estrictamente con la cuota diaria establecida a través de la plataforma.
-3. Reportar cualquier avería o incidente de manera inmediata al Centro de Control Maestro.
+    <!-- Botón Volver al Administrador (Oculto en enlace exclusivo) -->
+    <button id="btn-return-admin" onclick="switchView('admin')" class="absolute top-3 right-3 z-40 opacity-0 hover:opacity-100 focus:opacity-100 bg-slate-900/90 text-white p-2.5 rounded-xl border border-slate-700 transition duration-300 text-xs font-bold flex items-center gap-2 shadow-2xl">
+      <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Panel Admin
+    </button>
 
-TERCERO: SANCIONES
-El incumplimiento de pagos por un periodo consecutivo, o el mal uso comprobado de la unidad, facultará a La Empresa para la retención inmediata del vehículo sin derecho a reclamo.
+    <!-- Cortina de Inicio para Enlace Exclusivo -->
+    <div id="projector-launch-overlay" class="absolute inset-0 z-50 bg-black/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-6 text-center">
+      <div class="max-w-md w-full bg-slate-900/80 border border-amber-500/30 rounded-3xl p-8 shadow-2xl flex flex-col items-center space-y-4">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-slate-950 font-black text-2xl shadow-xl shadow-amber-500/20 animate-pulse">
+          EP
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-white font-cinzel">EventCast Proyector</h2>
+          <p class="text-xs text-slate-400 mt-1">Listo para proyectar en pantalla gigante</p>
+        </div>
+        <button id="btn-start-projector" onclick="launchProjectorFullscreen()" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-black text-sm tracking-wide shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 transition transform active:scale-95">
+          <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+          INICIAR PANTALLA COMPLETA
+        </button>
+        <span class="text-[11px] text-slate-500">Toca la pantalla o presiona OK / Enter en el control remoto</span>
+      </div>
+    </div>
+  </section>
 
-Al firmar este documento, el conductor declara haber leído, comprendido y aceptado en su totalidad las cláusulas expuestas.`;
+  <!-- ========================================================= -->
+  <!-- VISTA 3: PORTAL MÓVIL PARA INVITADOS (?mode=guest)        -->
+  <!-- ========================================================= -->
+  <section id="guest-view" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-start overflow-y-auto p-4 sm:p-6 hidden">
+    <div class="max-w-md w-full space-y-5 my-auto pb-8">
+      
+      <!-- Encabezado del Portal Invitado -->
+      <div class="text-center space-y-1.5 pt-4">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-amber-500/20">
+          🎉
+        </div>
+        <h2 class="text-xl font-black text-white tracking-wide">¡Comparte en la Pantalla!</h2>
+        <p class="text-xs text-slate-400">Sube tu foto o envía tus saludos en vivo al evento</p>
+      </div>
 
-    document.getElementById('contrato-cuerpo').value = plantilla;
-}
+      <!-- Selector de Tipo: Foto o Dedicatoria -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-1 flex text-xs">
+        <button id="guest-tab-photo" type="button" onclick="setGuestUploadType('image')" class="flex-1 py-2 rounded-xl font-bold bg-amber-500 text-slate-950 transition">
+          📷 Subir Foto
+        </button>
+        <button id="guest-tab-text" type="button" onclick="setGuestUploadType('text')" class="flex-1 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition">
+          ✍️ Solo Mensaje
+        </button>
+      </div>
 
-function verContratoFirmado(docId) {
-    db.collection('contratos_arreglos_firmas').doc(docId).get().then(doc => {
-        if (doc.exists) {
-            const d = doc.data();
+      <!-- Formulario Invitado -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 shadow-2xl">
+        
+        <!-- Bloque Foto -->
+        <div id="guest-photo-section">
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Toma o elige tu foto</label>
+          <div class="relative border-2 border-dashed border-slate-800 hover:border-amber-400/50 rounded-2xl p-5 text-center cursor-pointer transition bg-slate-950" onclick="document.getElementById('guest-file-input').click()">
+            <input type="file" id="guest-file-input" class="hidden" accept="image/*" onchange="handleGuestFileSelected(event)">
             
-            // Llenar Modal Visual
-            document.getElementById('ver-cuerpo-contrato').innerText = d.cuerpo;
-            document.getElementById('ver-firma-img').src = d.firmaBase64 || '';
-            document.getElementById('ver-fecha-firma').innerText = `Firmado electrónicamente el: ${d.fechaFirma || 'Desconocido'}`;
-            
-            // Llenar Plantilla Oculta para PDF
-            document.getElementById('pdf-cuerpo').innerText = d.cuerpo;
-            document.getElementById('pdf-firma-export').src = d.firmaBase64 || '';
-            document.getElementById('pdf-nombre-conductor').innerText = d.choferNombre.toUpperCase();
-            document.getElementById('pdf-fecha-export').innerText = `TIMESTAMP DE AUDITORÍA: ${d.fechaFirma || 'Desconocido'} | REF-ID: ${doc.id}`;
-            document.getElementById('pdf-doc-id').innerText = doc.id.substring(0,8).toUpperCase();
-            
-            // Mostrar Modal
-            document.getElementById('modal-ver-contrato').style.display = 'flex';
+            <div id="guest-photo-placeholder">
+              <svg class="w-8 h-8 mx-auto text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <p class="text-xs font-bold text-slate-300">Toca para abrir cámara o galería</p>
+              <p class="text-[10px] text-slate-500 mt-1">Se optimiza automáticamente</p>
+            </div>
+
+            <div id="guest-photo-preview-wrap" class="hidden">
+              <img id="guest-photo-preview" src="" alt="Vista previa" class="max-h-48 mx-auto rounded-xl object-contain">
+              <p class="text-[11px] text-amber-400 font-bold mt-2">Toca para cambiar de foto</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mensaje o Pie de Foto -->
+        <div>
+          <label id="guest-message-label" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Dedicatoria o Frase</label>
+          <textarea id="guest-input-message" rows="3" placeholder="¡Muchas felicidades a los novios! Que la pasen increíble..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-amber-400 outline-none resize-none"></textarea>
+        </div>
+
+        <!-- Nombre / Remitente -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Tu Nombre o Mesa</label>
+          <input type="text" id="guest-input-sender" placeholder="Ej: Mesa 5 • Los primos" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-amber-400 outline-none">
+        </div>
+
+        <!-- Botón Enviar -->
+        <button type="button" id="btn-guest-submit" onclick="submitGuestContent()" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-black text-sm tracking-wide shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 transition active:scale-95">
+          <span>🚀 ENVIAR A LA PANTALLA</span>
+        </button>
+
+        <p class="text-[10px] text-center text-slate-500 leading-tight">
+          Tu envío pasará a la cabina de control para su aprobación y saldrá en el proyector en unos momentos.
+        </p>
+
+      </div>
+
+      <!-- Pantalla de Éxito para el Invitado -->
+      <div id="guest-success-card" class="hidden bg-emerald-950/40 border border-emerald-500/40 rounded-3xl p-6 text-center space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl font-bold">
+          ✓
+        </div>
+        <h3 class="text-base font-bold text-white">¡Envío Recibido con Éxito!</h3>
+        <p class="text-xs text-slate-300">El DJ o administrador lo está revisando para proyectarlo en pantalla gigante. ¡Disfruta la fiesta!</p>
+        <button onclick="resetGuestForm()" class="mt-2 py-2 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition">
+          Enviar otra foto o dedicatoria
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Notificaciones Toast -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ======================================================= -->
+  <!-- JAVASCRIPT: LÓGICA COMPLETA Y ROBUSTA                   -->
+  <!-- ======================================================= -->
+  <script>
+    const state = {
+      slides: [
+        {
+          id: 'sample-1',
+          type: 'text',
+          badge: '🎂 Dedicatoria de Cumpleaños',
+          title: 'Cumpleaños de María',
+          message: '¡Muchas felicidades María en tus 15 años! Que pases una noche mágica e inolvidable.',
+          signature: 'Mesa 3 • Familia y Amigos',
+          bgStyle: 'gold',
+          duration: 7000
+        },
+        {
+          id: 'sample-2',
+          type: 'image',
+          url: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1920&q=80',
+          badge: '💍 Bodas de Plata',
+          title: 'Carlos & Ana',
+          message: 'Brindamos por 25 años de amor',
+          signature: 'Cabina Principal',
+          duration: 7000
+        },
+        {
+          id: 'sample-3',
+          type: 'text',
+          badge: '🎧 Cabina del DJ',
+          title: 'Pista de Baile',
+          message: '¡Atención a todos los invitados! Abran la pista para el baile sorpresa de la noche.',
+          signature: 'DJ en Vivo',
+          bgStyle: 'neon',
+          duration: 6000
         }
-    });
-}
-
-function descargarContratoPDF() {
-    const originalElement = document.getElementById('pdf-export-content');
-    const clone = originalElement.cloneNode(true);
-
-    // CORRECCIÓN PARA DISPOSITIVOS MÓVILES
-    // En vez de mandarlo a -9999px (lo cual hace que el celular lo descarte de la memoria),
-    // lo posicionamos en el top 0 pero oculto por debajo de la interfaz modal actual usando z-index.
-    clone.style.display = 'block';
-    clone.style.position = 'absolute';
-    clone.style.top = '0';
-    clone.style.left = '0';
-    clone.style.zIndex = '-9999';
-
-    document.body.appendChild(clone);
-
-    // Cambiar estado del botón para dar feedback de que no está colgado
-    const btn = document.getElementById('btn-descarga-pdf');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> GENERANDO...';
-    btn.disabled = true;
-
-    const opt = {
-        margin:       0.4, 
-        filename:     `Acuerdo_MasterMobility_${document.getElementById('pdf-doc-id').innerText}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            letterRendering: true,
-            scrollY: 0, // CRÍTICO: Fuerza a capturar desde arriba, ignorando si el usuario hizo scroll
-            scrollX: 0,
-            windowWidth: 900 // CRÍTICO: Fuerza un área de renderizado para evitar cortes en el celular
-        }, 
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      ],
+      pendingModeration: [], // Cola de espera para aprobar
+      requireApproval: true,  // Si está activo, nada sale sin que le des clic
+      currentIndex: 0,
+      isPlaying: true,
+      slideDuration: 7000,
+      videoTrimDuration: 20, // Segundos máximos por video
+      activeView: 'admin',
+      selectedAddType: 'text',
+      tempMediaData: null,
+      tempMediaType: null,
+      isFirebaseConnected: false,
+      isTelegramActive: false,
+      telegramToken: '',
+      telegramLastUpdateId: 0,
+      isDedicatedProjectorLink: false,
+      activeImageLayer: 'a',
+      guestUploadType: 'image',
+      guestPhotoData: null
     };
 
-    html2pdf().set(opt).from(clone).save().then(() => {
-        document.body.removeChild(clone);
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }).catch(err => {
-        console.error("Error al generar el PDF:", err);
-        if(document.body.contains(clone)) document.body.removeChild(clone);
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        alert("Ocurrió un error al generar el PDF. Inténtalo de nuevo.");
+    const localChannel = new BroadcastChannel('eventcast_pro_channel');
+    const mediaBlobCache = new Map();
+    let qrCodeInstance = null;
+
+    let timerInterval = null;
+    let timerProgress = 0;
+    let videoTimeCheckInterval = null;
+    let telegramPollingInterval = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const isProjectorMode = params.get('mode') === 'projector' || params.get('view') === 'display';
+      const isGuestMode = params.get('mode') === 'guest';
+
+      if (isGuestMode) {
+        // Muestra la vista limpia para el invitado
+        document.getElementById('admin-navbar').classList.add('hidden');
+        document.getElementById('admin-view').classList.add('hidden');
+        document.getElementById('display-view').classList.add('hidden');
+        document.getElementById('guest-view').classList.remove('hidden');
+        checkSavedFirebaseConfig();
+        return;
+      }
+
+      if (isProjectorMode) {
+        state.isDedicatedProjectorLink = true;
+        const adminNavbar = document.getElementById('admin-navbar');
+        const returnBtn = document.getElementById('btn-return-admin');
+        const overlay = document.getElementById('projector-launch-overlay');
+
+        if (adminNavbar) adminNavbar.classList.add('hidden');
+        if (returnBtn) returnBtn.classList.add('hidden');
+        if (overlay) overlay.classList.remove('hidden');
+
+        switchView('display');
+        tryAutoFullscreen();
+        setupImmediateFullscreenTriggers();
+      } else {
+        switchView('admin');
+      }
+
+      setupCursorAutoHide();
+      renderQueueList();
+      renderSlide();
+      startSlideTimer();
+      startProjectorClock();
+      checkSavedFirebaseConfig();
+      checkSavedTelegramConfig();
+
+      localChannel.onmessage = (event) => {
+        handleIncomingSync(event.data);
+      };
     });
-}
 
-async function crearAcuerdoFirma(e) {
-    e.preventDefault();
-    const choferId = document.getElementById('select-chofer-contrato').value;
-    const cuerpo = document.getElementById('contrato-cuerpo').value;
-    
-    if(!choferId) return alert("Selecciona un piloto destinatario.");
+    function setupImmediateFullscreenTriggers() {
+      const triggerImmediateLaunch = () => {
+        launchProjectorFullscreen();
+        window.removeEventListener('keydown', triggerImmediateLaunch);
+        window.removeEventListener('click', triggerImmediateLaunch);
+        window.removeEventListener('touchstart', triggerImmediateLaunch);
+        window.removeEventListener('pointerdown', triggerImmediateLaunch);
+      };
 
-    const chofer = appData.conductores.find(c => c.id === choferId);
+      window.addEventListener('keydown', triggerImmediateLaunch, { once: true });
+      window.addEventListener('click', triggerImmediateLaunch, { once: true });
+      window.addEventListener('touchstart', triggerImmediateLaunch, { once: true });
+      window.addEventListener('pointerdown', triggerImmediateLaunch, { once: true });
+    }
 
-    try {
-        const docRef = await db.collection('contratos_arreglos_firmas').add({
-            choferId: choferId,
-            choferNombre: chofer ? chofer.nombre : 'Conductor',
-            cuerpo: cuerpo,
-            firmado: false,
-            timestamp: Date.now(),
-            fechaCreacion: new Date().toLocaleDateString()
-        });
+    function tryAutoFullscreen() {
+      const rootEl = document.documentElement;
+      const requestFS = rootEl.requestFullscreen || rootEl.webkitRequestFullscreen || rootEl.mozRequestFullScreen || rootEl.msRequestFullscreen;
+      if (requestFS) {
+        requestFS.call(rootEl).then(() => {
+          const overlay = document.getElementById('projector-launch-overlay');
+          if (overlay) overlay.classList.add('hidden');
+        }).catch(() => {});
+      }
+    }
 
-        const link = `${window.location.origin}${window.location.pathname}?contract=${docRef.id}`;
-        document.getElementById('txt-link-acuerdo').innerText = link;
-        document.getElementById('wrapper-link-acuerdo').style.display = 'block';
-        document.getElementById('contrato-cuerpo').value = '';
-        
-        if(document.getElementById('select-chofer-historial').value === choferId) {
-            auditarConductorSeleccionado();
+    function launchProjectorFullscreen() {
+      const overlay = document.getElementById('projector-launch-overlay');
+      if (overlay) overlay.classList.add('hidden');
+
+      if (!document.fullscreenElement) {
+        const rootEl = document.documentElement;
+        if (rootEl.requestFullscreen) {
+          rootEl.requestFullscreen().catch(() => {});
+        } else if (rootEl.webkitRequestFullscreen) {
+          rootEl.webkitRequestFullscreen();
         }
-    } catch(err) { alert(err.message); }
-}
+      }
 
-function copiarLinkAcuerdo() {
-    const link = document.getElementById('txt-link-acuerdo').innerText;
-    navigator.clipboard.writeText(link).then(() => {
-        alert("Enlace legal copiado al portapapeles. Envíaselo al conductor por WhatsApp.");
-    });
-}
+      renderSlide();
+      resetTimer();
+    }
 
-let datosContratoConductorLocal = null;
+    function setupCursorAutoHide() {
+      let cursorTimeout;
+      const displayView = document.getElementById('display-view');
 
-function inicializarLienzoFirmaDriver() {
-    db.collection('contratos_arreglos_firmas').doc(contratoUrlId).get().then(doc => {
-        if(!doc.exists || doc.data().firmado) {
-            document.getElementById('box-firma-legal').style.display = 'none';
-            document.getElementById('box-firma-exito').style.display = 'block';
+      document.addEventListener('mousemove', () => {
+        if (state.activeView === 'display') {
+          displayView.style.cursor = 'default';
+          clearTimeout(cursorTimeout);
+          cursorTimeout = setTimeout(() => {
+            if (state.activeView === 'display') {
+              displayView.style.cursor = 'none';
+            }
+          }, 2500);
+        }
+      });
+    }
+
+    function switchView(viewName) {
+      state.activeView = viewName;
+      const adminNavbar = document.getElementById('admin-navbar');
+      const adminView = document.getElementById('admin-view');
+      const displayView = document.getElementById('display-view');
+      const btnAdmin = document.getElementById('btn-view-admin');
+      const btnDisplay = document.getElementById('btn-view-display');
+      const returnBtn = document.getElementById('btn-return-admin');
+
+      if (viewName === 'display') {
+        if (adminNavbar) adminNavbar.classList.add('hidden');
+        if (adminView) adminView.classList.add('hidden');
+        displayView.classList.remove('hidden');
+
+        if (returnBtn) {
+          if (state.isDedicatedProjectorLink) {
+            returnBtn.classList.add('hidden');
+          } else {
+            returnBtn.classList.remove('hidden');
+          }
+        }
+
+        if (btnDisplay) btnDisplay.className = "px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-950 text-xs transition";
+        if (btnAdmin) btnAdmin.className = "px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white text-xs transition";
+        renderSlide();
+      } else {
+        displayView.classList.add('hidden');
+        if (adminNavbar) adminNavbar.classList.remove('hidden');
+        if (adminView) adminView.classList.remove('hidden');
+
+        if (btnAdmin) btnAdmin.className = "px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-950 text-xs transition";
+        if (btnDisplay) btnDisplay.className = "px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white text-xs transition";
+        renderQueueList();
+      }
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function copyProjectorLink() {
+      const cleanUrl = `${window.location.origin}${window.location.pathname}?mode=projector`;
+      const tempInput = document.createElement('input');
+      tempInput.value = cleanUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand('copy');
+        showToast('✅ Enlace copiado. Pégalo en el navegador del proyector Wanbo.');
+      } catch (err) {
+        showToast('URL: ' + cleanUrl);
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    /* -------------------------------------------------------------
+       PORTAL Y MODAL QR PARA INVITADOS
+       ------------------------------------------------------------- */
+    function getGuestPortalUrl() {
+      return `${window.location.origin}${window.location.pathname}?mode=guest`;
+    }
+
+    function openGuestQrModal() {
+      const modal = document.getElementById('guest-qr-modal');
+      const urlInput = document.getElementById('guest-portal-url-display');
+      const canvasContainer = document.getElementById('guest-qrcode-canvas');
+      const guestUrl = getGuestPortalUrl();
+
+      urlInput.value = guestUrl;
+      canvasContainer.innerHTML = '';
+
+      try {
+        if (typeof QRCode !== 'undefined') {
+          qrCodeInstance = new QRCode(canvasContainer, {
+            text: guestUrl,
+            width: 180,
+            height: 180,
+            colorDark: "#020617",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } else {
+          canvasContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(guestUrl)}" alt="QR Code" class="w-[180px] h-[180px] rounded-lg">`;
+        }
+      } catch (e) {
+        canvasContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(guestUrl)}" alt="QR Code" class="w-[180px] h-[180px] rounded-lg">`;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeGuestQrModal() {
+      document.getElementById('guest-qr-modal').classList.add('hidden');
+    }
+
+    function copyGuestPortalLink() {
+      const guestUrl = getGuestPortalUrl();
+      const tempInput = document.createElement('input');
+      tempInput.value = guestUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand('copy');
+        showToast('✅ Enlace de Invitados copiado.');
+      } catch (err) {
+        showToast('URL: ' + guestUrl);
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    /* -------------------------------------------------------------
+       LÓGICA DEL PORTAL DEL INVITADO (?mode=guest)
+       ------------------------------------------------------------- */
+    function setGuestUploadType(type) {
+      state.guestUploadType = type;
+      const btnPhoto = document.getElementById('guest-tab-photo');
+      const btnText = document.getElementById('guest-tab-text');
+      const photoSec = document.getElementById('guest-photo-section');
+      const msgLabel = document.getElementById('guest-message-label');
+
+      if (type === 'image') {
+        btnPhoto.className = "flex-1 py-2 rounded-xl font-bold bg-amber-500 text-slate-950 transition";
+        btnText.className = "flex-1 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition";
+        photoSec.classList.remove('hidden');
+        msgLabel.innerText = "Pie de Foto / Dedicatoria (Opcional)";
+      } else {
+        btnText.className = "flex-1 py-2 rounded-xl font-bold bg-amber-500 text-slate-950 transition";
+        btnPhoto.className = "flex-1 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition";
+        photoSec.classList.add('hidden');
+        msgLabel.innerText = "Mensaje o Dedicatoria Especial";
+      }
+    }
+
+    function handleGuestFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      compressImageWithCanvas(file, (compressedDataUrl) => {
+        state.guestPhotoData = compressedDataUrl;
+        document.getElementById('guest-photo-placeholder').classList.add('hidden');
+        const previewWrap = document.getElementById('guest-photo-preview-wrap');
+        const previewImg = document.getElementById('guest-photo-preview');
+        previewImg.src = compressedDataUrl;
+        previewWrap.classList.remove('hidden');
+      });
+    }
+
+    function submitGuestContent() {
+      const type = state.guestUploadType;
+      const message = document.getElementById('guest-input-message').value.trim();
+      const sender = document.getElementById('guest-input-sender').value.trim() || 'Invitado del Evento';
+
+      if (type === 'text' && !message) {
+        alert('Por favor escribe tu dedicatoria antes de enviar.');
+        return;
+      }
+
+      if (type === 'image' && !state.guestPhotoData) {
+        alert('Por favor selecciona o toma una foto.');
+        return;
+      }
+
+      const guestItem = {
+        id: 'web-guest-' + Date.now(),
+        type: type,
+        badge: (type === 'image' ? '📷 Foto de ' : '💬 Mensaje de ') + sender,
+        title: message || (type === 'image' ? '¡Saludos desde la fiesta!' : 'Dedicatoria en Vivo'),
+        message: message,
+        signature: sender,
+        bgStyle: 'gold',
+        url: type === 'image' ? state.guestPhotoData : null,
+        duration: 7000
+      };
+
+      // Si hay conexión a Firebase, enviamos el elemento a la cola de pendientes
+      if (window.firebase && firebase.apps.length && firebase.database) {
+        firebase.database().ref('eventcast_guest_submissions').push(guestItem);
+      } else {
+        // Si operan en red local directa
+        localChannel.postMessage({ action: 'guest_submission', payload: guestItem });
+      }
+
+      // Mostrar pantalla de confirmación al invitado
+      document.getElementById('guest-photo-section').parentElement.classList.add('hidden');
+      document.getElementById('guest-success-card').classList.remove('hidden');
+    }
+
+    function resetGuestForm() {
+      state.guestPhotoData = null;
+      document.getElementById('guest-input-message').value = '';
+      document.getElementById('guest-input-sender').value = '';
+      document.getElementById('guest-file-input').value = '';
+      document.getElementById('guest-photo-preview-wrap').classList.add('hidden');
+      document.getElementById('guest-photo-placeholder').classList.remove('hidden');
+      document.getElementById('guest-success-card').classList.add('hidden');
+      document.getElementById('guest-photo-section').parentElement.classList.remove('hidden');
+    }
+
+    /* -------------------------------------------------------------
+       FORMULARIO, TEMAS Y SELECCIÓN DE DURACIÓN DE VIDEO
+       ------------------------------------------------------------- */
+    function setAddType(type) {
+      state.selectedAddType = type;
+      const tabText = document.getElementById('tab-type-text');
+      const tabImage = document.getElementById('tab-type-image');
+      const tabVideo = document.getElementById('tab-type-video');
+      const formText = document.getElementById('form-text-section');
+      const formMedia = document.getElementById('form-media-section');
+      const videoTrimBox = document.getElementById('video-trim-setting-box');
+
+      [tabText, tabImage, tabVideo].forEach(t => {
+        t.className = "px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition";
+      });
+
+      if (type === 'text') {
+        tabText.className = "px-3 py-1.5 rounded-lg font-bold bg-amber-500 text-slate-950 transition";
+        formText.classList.remove('hidden');
+        formMedia.classList.add('hidden');
+        videoTrimBox.classList.add('hidden');
+      } else {
+        formText.classList.add('hidden');
+        formMedia.classList.remove('hidden');
+
+        if (type === 'image') {
+          tabImage.className = "px-3 py-1.5 rounded-lg font-bold bg-amber-500 text-slate-950 transition";
+          document.getElementById('file-upload-prompt').innerText = "Haz clic para seleccionar Foto";
+          videoTrimBox.classList.add('hidden');
+        } else {
+          tabVideo.className = "px-3 py-1.5 rounded-lg font-bold bg-amber-500 text-slate-950 transition";
+          document.getElementById('file-upload-prompt').innerText = "Haz clic para seleccionar Video Clip";
+          videoTrimBox.classList.remove('hidden');
+        }
+      }
+
+      state.tempMediaData = null;
+      state.tempMediaType = null;
+      updateLivePreview();
+    }
+
+    function setVideoTrimDuration(sec) {
+      state.videoTrimDuration = sec;
+      document.getElementById('label-video-trim').innerText = `${sec} seg`;
+      [15, 20, 30, 40].forEach(s => {
+        const btn = document.getElementById(`btn-trim-${s}`);
+        if (s === sec) {
+          btn.className = "py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold bg-indigo-600 text-white";
+        } else {
+          btn.className = "py-1.5 rounded-xl border border-indigo-500/30 text-xs font-bold text-slate-300 hover:bg-indigo-900/50";
+        }
+      });
+      showToast(`✂️ Corte automático configurado a los ${sec} segundos.`);
+    }
+
+    function setQuickBadge(badgeText) {
+      document.getElementById('input-badge').value = badgeText;
+      updateLivePreview();
+    }
+
+    function setThemeStyle(theme) {
+      document.getElementById('selected-theme').value = theme;
+      updateLivePreview();
+    }
+
+    function updateLivePreview() {
+      const type = state.selectedAddType;
+      const previewBox = document.getElementById('preview-box');
+      const mediaContainer = document.getElementById('preview-media-container');
+      const previewImg = document.getElementById('preview-img');
+      const previewVideo = document.getElementById('preview-video');
+      const textContainer = document.getElementById('preview-text-container');
+      const previewBadge = document.getElementById('preview-badge');
+      const previewMsg = document.getElementById('preview-message');
+      const previewSig = document.getElementById('preview-signature');
+
+      if (type === 'text') {
+        mediaContainer.classList.add('hidden');
+        textContainer.classList.remove('hidden');
+
+        const theme = document.getElementById('selected-theme').value;
+        const badge = document.getElementById('input-badge').value.trim() || '🎂 Dedicatoria';
+        const msg = document.getElementById('input-message').value.trim() || 'Escribe aquí el mensaje especial que se verá en pantalla grande...';
+        const sig = document.getElementById('input-signature').value.trim() || '— De parte de tus amigos —';
+
+        previewBadge.innerText = badge;
+        previewMsg.innerText = msg;
+        previewSig.innerText = sig;
+
+        applyThemeClasses(previewBox, previewBadge, previewMsg, previewSig, theme);
+      } else {
+        textContainer.classList.remove('hidden');
+        mediaContainer.classList.remove('hidden');
+
+        const badge = document.getElementById('input-media-badge').value.trim() || '📷 En Vivo';
+        const title = document.getElementById('input-media-title').value.trim() || '';
+
+        previewBadge.innerText = badge;
+        previewMsg.innerText = title;
+        previewSig.innerText = '';
+
+        if (state.tempMediaData) {
+          if (state.tempMediaType === 'video') {
+            previewImg.classList.add('hidden');
+            previewVideo.classList.remove('hidden');
+            previewVideo.src = state.tempMediaData;
+          } else {
+            previewVideo.classList.add('hidden');
+            previewImg.classList.remove('hidden');
+            previewImg.src = state.tempMediaData;
+          }
+        } else {
+          previewVideo.classList.add('hidden');
+          previewImg.classList.remove('hidden');
+          previewImg.src = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80';
+        }
+      }
+    }
+
+    function applyThemeClasses(boxEl, badgeEl, msgEl, sigEl, theme) {
+      boxEl.className = "w-full aspect-video rounded-2xl overflow-hidden relative shadow-2xl flex items-center justify-center p-6 border transition-all duration-300";
+
+      if (theme === 'gold') {
+        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-amber-950/40', 'to-slate-950', 'border-amber-500/30');
+        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-cinzel font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40 backdrop-blur-md";
+        msgEl.className = "text-lg sm:text-xl font-serif text-white text-shadow-gold leading-relaxed";
+        sigEl.className = "text-xs font-medium text-amber-200/90 tracking-wide";
+      } else if (theme === 'neon') {
+        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-purple-950/50', 'to-slate-950', 'border-purple-500/40');
+        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-purple-500/20 text-purple-300 border border-purple-500/40 backdrop-blur-md";
+        msgEl.className = "text-lg sm:text-xl font-bebas tracking-wide text-pink-300 text-shadow-neon leading-relaxed";
+        sigEl.className = "text-xs font-medium text-purple-200 tracking-wide";
+      } else if (theme === 'rose') {
+        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-rose-950/40', 'to-slate-950', 'border-rose-500/30');
+        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-rose-500/20 text-rose-300 border border-rose-500/40 backdrop-blur-md";
+        msgEl.className = "text-lg sm:text-xl font-serif italic text-rose-100 text-shadow-subtle leading-relaxed";
+        sigEl.className = "text-xs font-medium text-rose-300 tracking-wide";
+      } else if (theme === 'sapphire') {
+        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-blue-950/40', 'to-slate-950', 'border-blue-500/30');
+        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-blue-500/20 text-blue-300 border border-blue-500/40 backdrop-blur-md";
+        msgEl.className = "text-lg sm:text-xl font-sans font-extrabold text-blue-100 text-shadow-subtle leading-relaxed";
+        sigEl.className = "text-xs font-medium text-blue-300 tracking-wide";
+      } else {
+        boxEl.classList.add('bg-gradient-to-br', 'from-slate-950', 'via-emerald-950/40', 'to-slate-950', 'border-emerald-500/30');
+        badgeEl.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 backdrop-blur-md";
+        msgEl.className = "text-lg sm:text-xl font-serif text-emerald-100 text-shadow-subtle leading-relaxed";
+        sigEl.className = "text-xs font-medium text-emerald-300 tracking-wide";
+      }
+    }
+
+    /* -------------------------------------------------------------
+       COMPRESIÓN LOCAL CANVAS Y PROTECCIÓN DE VIDEOS
+       ------------------------------------------------------------- */
+    function handleLocalFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.type.startsWith('image/')) {
+        showToast('⏳ Optimizando y comprimiendo foto...');
+        compressImageWithCanvas(file, (compressedDataUrl) => {
+          state.tempMediaData = compressedDataUrl;
+          state.tempMediaType = 'image';
+          state.selectedAddType = 'image';
+          setAddType('image');
+          updateLivePreview();
+          showToast('✅ Foto optimizada en HD (~250 KB).');
+        });
+      } else if (file.type.startsWith('video/')) {
+        const maxVideoSize = 15 * 1024 * 1024; // 15 MB
+        if (file.size > maxVideoSize) {
+          showToast('⚠️ Video muy pesado (' + (file.size / (1024*1024)).toFixed(1) + ' MB). Límite de seguridad: 15 MB.');
+          event.target.value = '';
+          return;
+        }
+
+        const videoBlobUrl = URL.createObjectURL(file);
+        state.tempMediaData = videoBlobUrl;
+        state.tempMediaType = 'video';
+        state.selectedAddType = 'video';
+        setAddType('video');
+        updateLivePreview();
+        showToast('✅ Video clip listo. Se cortará a los ' + state.videoTrimDuration + ' seg.');
+      }
+    }
+
+    function compressImageWithCanvas(file, callback) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1920;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+          callback(compressedDataUrl);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleUrlInput(url) {
+      if (!url) return;
+      state.tempMediaData = url;
+      state.tempMediaType = url.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
+      updateLivePreview();
+    }
+
+    /* -------------------------------------------------------------
+       GESTIÓN DE LÍMITE DE VIDEOS (MÁXIMO 4)
+       ------------------------------------------------------------- */
+    function openVideoLimitModal() {
+      const modal = document.getElementById('video-limit-modal');
+      const listContainer = document.getElementById('video-limit-list');
+      const videos = state.slides.map((s, idx) => ({ ...s, originalIndex: idx })).filter(s => s.type === 'video');
+
+      if (videos.length === 0) {
+        listContainer.innerHTML = `
+          <div class="text-center py-6 text-slate-400 text-xs">
+            No hay videos en la lista actualmente (0/4).
+          </div>
+        `;
+      } else {
+        listContainer.innerHTML = videos.map((v, i) => `
+          <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 overflow-hidden">
+              <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">
+                ${i + 1}
+              </span>
+              <div class="overflow-hidden">
+                <p class="text-xs font-bold text-white truncate">${v.title || v.badge || 'Video Clip'}</p>
+                <p class="text-[10px] text-slate-400 truncate">Posición: #${v.originalIndex + 1} • Corte: ${v.maxDuration || 20}s</p>
+              </div>
+            </div>
+            <button onclick="removeVideoAndCloseModal(${v.originalIndex})" class="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs shadow-md transition shrink-0 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              Borrar este
+            </button>
+          </div>
+        `).join('');
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeVideoLimitModal() {
+      document.getElementById('video-limit-modal').classList.add('hidden');
+    }
+
+    function removeVideoAndCloseModal(index) {
+      deleteSlide(index);
+      closeVideoLimitModal();
+      showToast('✅ Video eliminado. Tienes espacio libre para agregar otro.');
+    }
+
+    /* -------------------------------------------------------------
+       SUBIR SLIDE Y REGISTRO EN COLA
+       ------------------------------------------------------------- */
+    function submitNewSlide() {
+      const type = state.selectedAddType;
+      const newSlide = {
+        id: 'slide-' + Date.now(),
+        type: type,
+        duration: state.slideDuration
+      };
+
+      if (type === 'text') {
+        const msg = document.getElementById('input-message').value.trim();
+        if (!msg) {
+          showToast('⚠️ Escribe el mensaje de la dedicatoria.');
+          return;
+        }
+        newSlide.badge = document.getElementById('input-badge').value.trim() || 'Aviso Especial';
+        newSlide.title = newSlide.badge;
+        newSlide.message = msg;
+        newSlide.signature = document.getElementById('input-signature').value.trim();
+        newSlide.bgStyle = document.getElementById('selected-theme').value || 'gold';
+      } else {
+        if (!state.tempMediaData) {
+          showToast('⚠️ Selecciona primero una foto o video.');
+          return;
+        }
+
+        newSlide.url = state.tempMediaData;
+        newSlide.badge = document.getElementById('input-media-badge').value.trim() || (type === 'video' ? '🎬 Clip' : '📷 En Vivo');
+        newSlide.title = document.getElementById('input-media-title').value.trim() || newSlide.badge;
+        newSlide.message = '';
+        newSlide.signature = '';
+
+        if (type === 'video') {
+          const currentVideosCount = state.slides.filter(s => s.type === 'video').length;
+          if (currentVideosCount >= 4) {
+            openVideoLimitModal();
+            showToast('🛑 Hay 4 videos activos. Selecciona cuál borrar para reemplazarlo.');
             return;
+          }
+          newSlide.maxDuration = state.videoTrimDuration; // Corte asignado
         }
+      }
 
-        const data = doc.data();
-        datosContratoConductorLocal = data;
-        document.getElementById('documento-legal-texto').innerText = data.cuerpo;
+      if (newSlide.type === 'video') {
+        if (state.slides.length >= 3) {
+          const insertIndex = Math.floor(state.slides.length / 2);
+          state.slides.splice(insertIndex, 0, newSlide);
+        } else {
+          state.slides.push(newSlide);
+        }
+      } else {
+        state.slides.push(newSlide);
+      }
 
-        const canvas = document.getElementById('signature-canvas');
-        signaturePad = new SignaturePad(canvas, {
-            penColor: 'rgb(0, 0, 0)',
-            backgroundColor: 'rgb(255, 255, 255)'
+      document.getElementById('input-message').value = '';
+      document.getElementById('input-signature').value = '';
+      document.getElementById('input-media-url').value = '';
+      document.getElementById('input-file-media').value = '';
+      state.tempMediaData = null;
+      state.tempMediaType = null;
+
+      updateLivePreview();
+      renderQueueList();
+      broadcastSync('slide_added', state.slides);
+      showToast('🚀 Publicación agregada a la proyección.');
+    }
+
+    /* -------------------------------------------------------------
+       LIBERACIÓN DE MEMORIA RAM
+       ------------------------------------------------------------- */
+    function releaseMemoryBlob(url) {
+      if (!url) return;
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+      if (mediaBlobCache.has(url)) {
+        const cachedBlobUrl = mediaBlobCache.get(url);
+        URL.revokeObjectURL(cachedBlobUrl);
+        mediaBlobCache.delete(url);
+      }
+    }
+
+    function deleteSlide(index) {
+      const slide = state.slides[index];
+      if (slide) {
+        releaseMemoryBlob(slide.url);
+      }
+      state.slides.splice(index, 1);
+      if (state.currentIndex >= state.slides.length) {
+        state.currentIndex = Math.max(0, state.slides.length - 1);
+      }
+      renderQueueList();
+      renderSlide();
+      resetTimer();
+      broadcastSync('slide_deleted', state.slides);
+      showToast('🗑️ Elemento eliminado y memoria purgada.');
+    }
+
+    function clearOnlyVideos() {
+      state.slides = state.slides.filter(s => {
+        if (s.type === 'video') {
+          releaseMemoryBlob(s.url);
+          return false;
+        }
+        return true;
+      });
+      if (state.currentIndex >= state.slides.length) {
+        state.currentIndex = Math.max(0, state.slides.length - 1);
+      }
+      renderQueueList();
+      renderSlide();
+      resetTimer();
+      broadcastSync('videos_cleared', state.slides);
+      showToast('✨ Videos eliminados. Memoria RAM liberada.');
+    }
+
+    function clearAllSlides() {
+      state.slides.forEach(s => releaseMemoryBlob(s.url));
+      state.slides = [];
+      state.currentIndex = 0;
+      renderQueueList();
+      renderSlide();
+      resetTimer();
+      broadcastSync('all_cleared', state.slides);
+      showToast('🧹 Cola de proyección vaciada por completo.');
+    }
+
+    /* -------------------------------------------------------------
+       CACHÉ BLOB EN PROYECTOR (DESCARGA ÚNICA)
+       ------------------------------------------------------------- */
+    async function getCachedMediaUrl(originalUrl) {
+      if (!originalUrl) return '';
+      if (originalUrl.startsWith('blob:') || originalUrl.startsWith('data:')) {
+        return originalUrl;
+      }
+      if (mediaBlobCache.has(originalUrl)) {
+        return mediaBlobCache.get(originalUrl);
+      }
+      try {
+        const response = await fetch(originalUrl);
+        const blob = await response.blob();
+        const localBlobUrl = URL.createObjectURL(blob);
+        mediaBlobCache.set(originalUrl, localBlobUrl);
+        return localBlobUrl;
+      } catch (e) {
+        return originalUrl;
+      }
+    }
+
+    /* -------------------------------------------------------------
+       MOTOR DE RENDER DEL PROYECTOR Y CORTE DE VIDEO
+       ------------------------------------------------------------- */
+    async function renderSlide() {
+      if (state.slides.length === 0) {
+        showEmptyProjectorState();
+        return;
+      }
+
+      if (state.currentIndex >= state.slides.length) {
+        state.currentIndex = 0;
+      }
+
+      const slide = state.slides[state.currentIndex];
+      const videoWrap = document.getElementById('projector-video-wrap');
+      const textWrap = document.getElementById('projector-text-wrap');
+      const projVideo = document.getElementById('projector-video');
+      const projBadge = document.getElementById('proj-badge');
+      const projMsg = document.getElementById('proj-message');
+      const projSig = document.getElementById('proj-signature');
+
+      const imgA = document.getElementById('projector-image-a');
+      const imgB = document.getElementById('projector-image-b');
+      const imgBgA = document.getElementById('projector-image-bg-a');
+      const imgBgB = document.getElementById('projector-image-bg-b');
+
+      clearInterval(videoTimeCheckInterval);
+      projVideo.pause();
+
+      if (slide.type === 'text') {
+        videoWrap.classList.add('hidden');
+        textWrap.classList.remove('hidden');
+
+        imgA.classList.remove('opacity-100');
+        imgA.classList.add('opacity-0');
+        imgB.classList.remove('opacity-100');
+        imgB.classList.add('opacity-0');
+        if (imgBgA) imgBgA.classList.add('opacity-0');
+        if (imgBgB) imgBgB.classList.add('opacity-0');
+
+        projBadge.innerText = slide.badge || 'Aviso Especial';
+        projMsg.innerText = slide.message || '';
+        projSig.innerText = slide.signature ? `— ${slide.signature} —` : '';
+
+        applyProjectorTheme(textWrap, projBadge, projMsg, projSig, slide.bgStyle || 'gold');
+      } else if (slide.type === 'image') {
+        videoWrap.classList.add('hidden');
+        textWrap.classList.add('hidden');
+
+        const cachedUrl = await getCachedMediaUrl(slide.url);
+
+        if (state.activeImageLayer === 'a') {
+          imgB.src = cachedUrl;
+          if (imgBgB) imgBgB.src = cachedUrl;
+          imgB.classList.remove('opacity-0');
+          imgB.classList.add('opacity-100');
+          if (imgBgB) {
+            imgBgB.classList.remove('opacity-0');
+            imgBgB.classList.add('opacity-40');
+          }
+
+          imgA.classList.remove('opacity-100');
+          imgA.classList.add('opacity-0');
+          if (imgBgA) imgBgA.classList.add('opacity-0');
+          state.activeImageLayer = 'b';
+        } else {
+          imgA.src = cachedUrl;
+          if (imgBgA) imgBgA.src = cachedUrl;
+          imgA.classList.remove('opacity-0');
+          imgA.classList.add('opacity-100');
+          if (imgBgA) {
+            imgBgA.classList.remove('opacity-0');
+            imgBgA.classList.add('opacity-40');
+          }
+
+          imgB.classList.remove('opacity-100');
+          imgB.classList.add('opacity-0');
+          if (imgBgB) imgBgB.classList.add('opacity-0');
+          state.activeImageLayer = 'a';
+        }
+      } else if (slide.type === 'video') {
+        textWrap.classList.add('hidden');
+        imgA.classList.add('opacity-0');
+        imgB.classList.add('opacity-0');
+        if (imgBgA) imgBgA.classList.add('opacity-0');
+        if (imgBgB) imgBgB.classList.add('opacity-0');
+        videoWrap.classList.remove('hidden');
+
+        const cachedUrl = await getCachedMediaUrl(slide.url);
+        projVideo.src = cachedUrl;
+        projVideo.muted = false;
+        projVideo.currentTime = 0;
+
+        const maxDurationSec = slide.maxDuration || state.videoTrimDuration || 20;
+
+        projVideo.play().catch(() => {
+          projVideo.muted = true;
+          projVideo.play().catch(() => {});
         });
 
-        function resizeCanvas() {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad.clear();
-        }
-        window.onresize = resizeCanvas;
-        resizeCanvas();
-    });
-}
+        // VIGILANTE DE CORTE: Si pasa del segundo configurado, corta de inmediato y salta
+        videoTimeCheckInterval = setInterval(() => {
+          if (projVideo.currentTime >= maxDurationSec) {
+            clearInterval(videoTimeCheckInterval);
+            nextSlide();
+          }
+        }, 200);
 
-function limpiarLienzoFirma() {
-    if(signaturePad) signaturePad.clear();
-}
+        projVideo.onended = () => {
+          clearInterval(videoTimeCheckInterval);
+          nextSlide();
+        };
+      }
 
-async function procesarEnvioContratoFirmado() {
-    if(!signaturePad || signaturePad.isEmpty()) {
-        return alert("❌ ERROR: No puedes aceptar el acuerdo sin antes estampar tu firma manuscrita en el recuadro blanco.");
+      renderQueueList();
     }
 
-    const btn = document.getElementById('btn-aceptar-acuerdo');
-    btn.disabled = true;
-    btn.innerText = "PROCESANDO FIRMA DIGITAL...";
+    function applyProjectorTheme(wrapEl, badgeEl, msgEl, sigEl, theme) {
+      if (theme === 'gold') {
+        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-cinzel font-black uppercase tracking-widest border border-amber-500/50 bg-amber-950/40 text-amber-300 backdrop-blur-md shadow-2xl transition-all";
+        msgEl.className = "fluid-proj-message font-serif text-white font-extrabold leading-tight text-shadow-gold px-2 break-words";
+        sigEl.className = "fluid-proj-signature font-sans font-semibold text-amber-200/90 tracking-wide text-shadow-subtle px-2";
+      } else if (theme === 'neon') {
+        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-bebas tracking-widest uppercase border border-purple-500/50 bg-purple-950/40 text-pink-300 backdrop-blur-md shadow-2xl transition-all";
+        msgEl.className = "fluid-proj-message font-bebas text-pink-300 font-extrabold leading-tight text-shadow-neon px-2 tracking-wide break-words";
+        sigEl.className = "fluid-proj-signature font-sans font-semibold text-purple-200 tracking-wide text-shadow-subtle px-2";
+      } else if (theme === 'rose') {
+        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-serif font-black uppercase tracking-widest border border-rose-500/50 bg-rose-950/40 text-rose-300 backdrop-blur-md shadow-2xl transition-all";
+        msgEl.className = "fluid-proj-message font-serif italic text-rose-100 font-extrabold leading-tight text-shadow-subtle px-2 break-words";
+        sigEl.className = "fluid-proj-signature font-sans font-semibold text-rose-300 tracking-wide text-shadow-subtle px-2";
+      } else if (theme === 'sapphire') {
+        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-sans font-black uppercase tracking-widest border border-blue-500/50 bg-blue-950/40 text-blue-300 backdrop-blur-md shadow-2xl transition-all";
+        msgEl.className = "fluid-proj-message font-sans text-blue-100 font-extrabold leading-tight text-shadow-subtle px-2 break-words";
+        sigEl.className = "fluid-proj-signature font-sans font-semibold text-blue-300 tracking-wide text-shadow-subtle px-2";
+      } else {
+        badgeEl.className = "inline-block rounded-full fluid-proj-badge font-serif font-black uppercase tracking-widest border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 backdrop-blur-md shadow-2xl transition-all";
+        msgEl.className = "fluid-proj-message font-serif text-emerald-100 font-extrabold leading-tight text-shadow-subtle px-2 break-words";
+        sigEl.className = "fluid-proj-signature font-sans font-semibold text-emerald-300 tracking-wide text-shadow-subtle px-2";
+      }
+    }
 
-    try {
-        const firmaBase64 = signaturePad.toDataURL("image/png");
+    function showEmptyProjectorState() {
+      const textWrap = document.getElementById('projector-text-wrap');
+      const videoWrap = document.getElementById('projector-video-wrap');
+      const projBadge = document.getElementById('proj-badge');
+      const projMsg = document.getElementById('proj-message');
+      const projSig = document.getElementById('proj-signature');
 
-        await db.collection('contratos_arreglos_firmas').doc(contratoUrlId).update({
-            firmado: true,
-            firmaBase64: firmaBase64,
-            fechaFirma: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString()
+      videoWrap.classList.add('hidden');
+      textWrap.classList.remove('hidden');
+
+      projBadge.innerText = 'EventCast Pro';
+      projMsg.innerText = 'Esperando dedicatorias y fotos desde la cabina...';
+      projSig.innerText = '— Wanbo 7 Pro Display Online —';
+      applyProjectorTheme(textWrap, projBadge, projMsg, projSig, 'gold');
+    }
+
+    /* -------------------------------------------------------------
+       TEMPORIZADOR Y CONTROL DE AVANCE
+       ------------------------------------------------------------- */
+    function startSlideTimer() {
+      clearInterval(timerInterval);
+      timerProgress = 0;
+      const stepMs = 50;
+
+      timerInterval = setInterval(() => {
+        if (!state.isPlaying || state.slides.length <= 1) return;
+
+        const currentSlide = state.slides[state.currentIndex];
+        if (currentSlide && currentSlide.type === 'video') return;
+
+        const duration = (currentSlide && currentSlide.duration) || state.slideDuration;
+        timerProgress += stepMs;
+        const progressPercent = Math.min(100, (timerProgress / duration) * 100);
+
+        const progressBar = document.getElementById('slide-progress-bar');
+        if (progressBar) {
+          progressBar.style.width = progressPercent + '%';
+        }
+
+        if (timerProgress >= duration) {
+          nextSlide();
+        }
+      }, stepMs);
+    }
+
+    function resetTimer() {
+      timerProgress = 0;
+      const progressBar = document.getElementById('slide-progress-bar');
+      if (progressBar) progressBar.style.width = '0%';
+    }
+
+    function nextSlide() {
+      if (state.slides.length === 0) return;
+      state.currentIndex = (state.currentIndex + 1) % state.slides.length;
+      resetTimer();
+      renderSlide();
+      broadcastSync('index_changed', state.currentIndex);
+    }
+
+    function prevSlide() {
+      if (state.slides.length === 0) return;
+      state.currentIndex = (state.currentIndex - 1 + state.slides.length) % state.slides.length;
+      resetTimer();
+      renderSlide();
+      broadcastSync('index_changed', state.currentIndex);
+    }
+
+    function jumpToSlide(index) {
+      state.currentIndex = index;
+      resetTimer();
+      renderSlide();
+      broadcastSync('index_changed', state.currentIndex);
+    }
+
+    function togglePlayPause() {
+      state.isPlaying = !state.isPlaying;
+      const btnText = document.getElementById('text-play-state');
+      btnText.innerText = state.isPlaying ? 'Pausar' : 'Reanudar';
+      showToast(state.isPlaying ? '▶️ Proyección reanudada' : '⏸️ Proyección pausada');
+    }
+
+    function setSlideDuration(val) {
+      state.slideDuration = parseInt(val, 10);
+      showToast(`⏱️ Duración: ${val / 1000} seg por foto.`);
+    }
+
+    /* -------------------------------------------------------------
+       RENDERIZADO DE LA COLA EN EL PANEL ADMINISTRADOR
+       ------------------------------------------------------------- */
+    function renderQueueList() {
+      const container = document.getElementById('slides-queue-list');
+      const badgeCount = document.getElementById('badge-queue-count');
+      const statTotal = document.getElementById('stat-total-slides');
+      const statVideos = document.getElementById('stat-video-count');
+
+      const videoCount = state.slides.filter(s => s.type === 'video').length;
+
+      badgeCount.innerText = state.slides.length;
+      statTotal.innerText = state.slides.length;
+      statVideos.innerText = `${videoCount}/4`;
+
+      if (state.slides.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 px-4 border border-dashed border-slate-800 rounded-2xl">
+            <p class="text-sm font-semibold text-slate-400">No hay diapositivas en cola</p>
+            <p class="text-xs text-slate-600 mt-1">Agrega una dedicatoria o foto arriba</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.slides.map((s, idx) => {
+        const isActive = idx === state.currentIndex;
+        const activeClass = isActive 
+          ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10" 
+          : "border-slate-800 bg-slate-950/60 hover:border-slate-700";
+
+        let typeBadge = '';
+        if (s.type === 'text') {
+          typeBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">✍️ Dedicatoria</span>';
+        } else if (s.type === 'image') {
+          typeBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">📷 Foto HD</span>';
+        } else {
+          typeBadge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">🎬 Video (${s.maxDuration || 20}s)</span>`;
+        }
+
+        const titleText = s.message || s.title || s.badge || 'Elemento multimedia';
+
+        return `
+          <div class="p-3 rounded-2xl border ${activeClass} flex items-center justify-between gap-3 transition cursor-pointer" onclick="jumpToSlide(${idx})">
+            <div class="flex items-center gap-3 overflow-hidden">
+              <span class="w-6 h-6 rounded-lg ${isActive ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'} flex items-center justify-center text-xs font-bold shrink-0">
+                ${idx + 1}
+              </span>
+              <div class="overflow-hidden">
+                <div class="flex items-center gap-2">
+                  ${typeBadge}
+                  <span class="text-xs font-semibold text-white truncate max-w-[180px]">${s.badge || ''}</span>
+                </div>
+                <p class="text-xs text-slate-400 truncate mt-0.5">${titleText}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
+              <button onclick="deleteSlide(${idx})" title="Eliminar y liberar RAM" class="p-1.5 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* -------------------------------------------------------------
+       SINCRONIZACIÓN DUAL: RED LOCAL + FIREBASE
+       ------------------------------------------------------------- */
+    function broadcastSync(action, payload) {
+      const dataPackage = {
+        action: action,
+        slides: state.slides,
+        currentIndex: state.currentIndex,
+        timestamp: Date.now()
+      };
+
+      localChannel.postMessage(dataPackage);
+
+      if (state.isFirebaseConnected && window.firebase && firebase.database) {
+        try {
+          firebase.database().ref('eventcast_live').set(dataPackage);
+        } catch (e) {
+          console.warn('Error sincronizando Firebase:', e);
+        }
+      }
+    }
+
+    function handleIncomingSync(data) {
+      if (!data) return;
+
+      // Recepción de envíos hechos por invitados desde la web (?mode=guest)
+      if (data.action === 'guest_submission' && data.payload) {
+        routeIncomingSlide(data.payload, data.payload.signature || 'Invitado Web', data.payload.type === 'image' ? 'foto' : 'mensaje');
+        return;
+      }
+
+      if (data.slides) {
+        state.slides = data.slides;
+      }
+      if (typeof data.currentIndex === 'number') {
+        state.currentIndex = data.currentIndex;
+      }
+      renderQueueList();
+      renderSlide();
+    }
+
+    /* -------------------------------------------------------------
+       CONFIGURACIÓN FIREBASE
+       ------------------------------------------------------------- */
+    function openFirebaseModal() {
+      document.getElementById('firebase-modal').classList.remove('hidden');
+    }
+
+    function closeFirebaseModal() {
+      document.getElementById('firebase-modal').classList.add('hidden');
+    }
+
+    function saveFirebaseConfig() {
+      const apiKey = document.getElementById('fb-apiKey').value.trim();
+      const dbUrl = document.getElementById('fb-dbUrl').value.trim();
+      const projId = document.getElementById('fb-projectId').value.trim();
+
+      if (!apiKey || !dbUrl) {
+        showToast('⚠️ Ingresa al menos API Key y Database URL.');
+        return;
+      }
+
+      const fbConfig = { apiKey, databaseURL: dbUrl, projectId: projId };
+      localStorage.setItem('eventcast_fb_config', JSON.stringify(fbConfig));
+      initFirebase(fbConfig);
+      closeFirebaseModal();
+    }
+
+    function checkSavedFirebaseConfig() {
+      const saved = localStorage.getItem('eventcast_fb_config');
+      if (saved) {
+        try {
+          const config = JSON.parse(saved);
+          document.getElementById('fb-apiKey').value = config.apiKey || '';
+          document.getElementById('fb-dbUrl').value = config.databaseURL || '';
+          document.getElementById('fb-projectId').value = config.projectId || '';
+          initFirebase(config);
+        } catch (e) {}
+      }
+    }
+
+    function initFirebase(config) {
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        state.isFirebaseConnected = true;
+
+        firebase.database().ref('eventcast_live').on('value', (snapshot) => {
+          const val = snapshot.val();
+          if (val) handleIncomingSync(val);
         });
 
-        const nombreChofer = datosContratoConductorLocal ? datosContratoConductorLocal.choferNombre : 'Un conductor';
-        enviarAlertaTelegramMaestra(`✍️ *CONTRATO FIRMADO DIGITALMENTE*\nEl conductor *${nombreChofer}* ha aceptado y firmado su acuerdo en la plataforma satélite.`);
+        // Escucha en tiempo real los envíos de invitados web si hay Firebase activo
+        firebase.database().ref('eventcast_guest_submissions').on('child_added', (snapshot) => {
+          const guestSlide = snapshot.val();
+          if (guestSlide && state.activeView === 'admin') {
+            routeIncomingSlide(guestSlide, guestSlide.signature || 'Invitado Web', guestSlide.type === 'image' ? 'foto' : 'mensaje');
+            snapshot.ref.remove(); // Se purga de Firebase una vez recibido por el admin
+          }
+        });
 
-        document.getElementById('box-firma-legal').style.display = 'none';
-        document.getElementById('box-firma-exito').style.display = 'block';
-    } catch(e) {
-        alert("Error de procesamiento: " + e.message);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ACEPTAR Y FIRMAR ACUERDO';
-    }
-}
+        const syncLabel = document.getElementById('nav-sync-label');
+        const syncDot = document.getElementById('nav-sync-indicator');
+        syncLabel.innerText = "Nube Activa (Firebase)";
+        syncDot.className = "w-2 h-2 rounded-full bg-indigo-400 animate-pulse";
 
-function enviarAlertaTelegramMaestra(msg) {
-    if (currentTgConfig.token && currentTgConfig.chat) {
-        fetch(`https://api.telegram.org/bot${currentTgConfig.token}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: currentTgConfig.chat, text: msg, parse_mode: 'Markdown' })
-        }).catch(e => console.log(e));
+        showToast('☁️ Firebase conectado en vivo.');
+      } catch (err) {
+        showToast('⚠️ Error al conectar Firebase. Operando en Red Local.');
+      }
     }
-}
-</script>
+
+    /* -------------------------------------------------------------
+       INTEGRACIÓN TELEGRAM BOT (RECEPCIÓN DIRECTA)
+       ------------------------------------------------------------- */
+    function openTelegramModal() {
+      document.getElementById('telegram-modal').classList.remove('hidden');
+    }
+
+    function closeTelegramModal() {
+      document.getElementById('telegram-modal').classList.add('hidden');
+    }
+
+    function saveTelegramConfig() {
+      const token = document.getElementById('tg-botToken').value.trim();
+      if (!token) {
+        showToast('⚠️ Pega el Token de tu bot de BotFather.');
+        return;
+      }
+      state.telegramToken = token;
+      localStorage.setItem('eventcast_tg_token', token);
+      startTelegramPolling();
+      closeTelegramModal();
+      showToast('🤖 Bot de Telegram activado.');
+    }
+
+    function checkSavedTelegramConfig() {
+      const savedToken = localStorage.getItem('eventcast_tg_token');
+      if (savedToken) {
+        state.telegramToken = savedToken;
+        document.getElementById('tg-botToken').value = savedToken;
+        startTelegramPolling();
+      }
+    }
+
+    function startTelegramPolling() {
+      if (!state.telegramToken) return;
+      clearInterval(telegramPollingInterval);
+      state.isTelegramActive = true;
+
+      telegramPollingInterval = setInterval(async () => {
+        try {
+          const url = `https://api.telegram.org/bot${state.telegramToken}/getUpdates?offset=${state.telegramLastUpdateId + 1}&timeout=2`;
+          const resp = await fetch(url);
+          const data = await resp.json();
+
+          if (data.ok && data.result.length > 0) {
+            for (const item of data.result) {
+              state.telegramLastUpdateId = item.update_id;
+              processTelegramMessage(item.message);
+            }
+          }
+        } catch (e) {}
+      }, 4000);
+    }
+
+    async function processTelegramMessage(msg) {
+      if (!msg) return;
+
+      const senderName = msg.from ? `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim() : 'Invitado';
+
+      // Si enviaron una foto
+      if (msg.photo && msg.photo.length > 0) {
+        const photoObj = msg.photo[msg.photo.length - 1]; // Mayor resolución
+        const fileId = photoObj.file_id;
+
+        try {
+          const fileResp = await fetch(`https://api.telegram.org/bot${state.telegramToken}/getFile?file_id=${fileId}`);
+          const fileData = await fileResp.json();
+          if (fileData.ok) {
+            const photoUrl = `https://api.telegram.org/file/bot${state.telegramToken}/${fileData.result.file_path}`;
+            
+            const incomingSlide = {
+              id: 'tg-photo-' + Date.now(),
+              type: 'image',
+              url: photoUrl,
+              badge: '📷 Foto de ' + senderName,
+              title: msg.caption || '¡Desde Telegram!',
+              signature: senderName,
+              duration: state.slideDuration
+            };
+
+            routeIncomingSlide(incomingSlide, senderName, 'foto');
+          }
+        } catch (err) {}
+      } 
+      // Si enviaron un mensaje de texto
+      else if (msg.text) {
+        const incomingSlide = {
+          id: 'tg-text-' + Date.now(),
+          type: 'text',
+          badge: '💬 Dedicatoria de ' + senderName,
+          title: 'Mensaje en Vivo',
+          message: msg.text,
+          signature: senderName,
+          bgStyle: 'gold',
+          duration: state.slideDuration
+        };
+
+        routeIncomingSlide(incomingSlide, senderName, 'mensaje');
+      }
+    }
+
+    /* -------------------------------------------------------------
+       SISTEMA DE MODERACIÓN (APROBACIÓN PREVIA)
+       ------------------------------------------------------------- */
+    function toggleModerationMode(isChecked) {
+      state.requireApproval = isChecked;
+      showToast(isChecked ? '🛡️ Moderación activada: debes aprobar todo antes de proyectar.' : '⚡ Moderación desactivada: todo pasa directo.');
+    }
+
+    function routeIncomingSlide(slide, sender, typeLabel) {
+      if (state.requireApproval) {
+        // Se coloca en la bandeja de espera del administrador
+        state.pendingModeration.unshift(slide);
+        renderModerationList();
+        showToast(`🔔 Nuevo ${typeLabel} de "${sender}". Esperando tu aprobación.`);
+      } else {
+        // Pasa directamente a la proyección
+        approveSlideDirectly(slide);
+      }
+    }
+
+    function renderModerationList() {
+      const container = document.getElementById('pending-moderation-list');
+      const badgeCount = document.getElementById('badge-pending-count');
+
+      badgeCount.innerText = `${state.pendingModeration.length} pendientes`;
+
+      if (state.pendingModeration.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-6 text-center text-slate-500 text-xs">
+            ✨ No hay envíos pendientes por revisar. Lo que manden por Telegram aparecerá aquí primero.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.pendingModeration.map((item, idx) => {
+        const isImg = item.type === 'image';
+        return `
+          <div class="bg-slate-950 border border-slate-800 hover:border-sky-500/50 rounded-2xl p-3 flex flex-col justify-between gap-3 shadow-lg transition">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isImg ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">
+                  ${isImg ? '📷 Foto Recibida' : '💬 Dedicatoria'}
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">#${idx + 1}</span>
+              </div>
+
+              ${isImg ? `
+                <div class="w-full h-28 rounded-xl overflow-hidden bg-slate-900 border border-slate-800">
+                  <img src="${item.url}" alt="Pendiente" class="w-full h-full object-cover">
+                </div>
+              ` : ''}
+
+              <div>
+                <p class="text-xs font-bold text-white line-clamp-2">${item.message || item.title || 'Sin mensaje'}</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">— De: ${item.signature || 'Anónimo'}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+              <button onclick="approvePendingItem(${idx})" class="flex-1 py-1.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1 transition shadow-md shadow-emerald-500/20">
+                ✅ Aprobar
+              </button>
+              <button onclick="rejectPendingItem(${idx})" class="py-1.5 px-3 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-semibold border border-rose-800/50 transition">
+                ❌ Descartar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function approvePendingItem(index) {
+      const item = state.pendingModeration.splice(index, 1)[0];
+      if (!item) return;
+
+      approveSlideDirectly(item);
+      renderModerationList();
+      showToast('✅ Aprobado y enviado a la proyección.');
+    }
+
+    function approveSlideDirectly(slide) {
+      if (slide.type === 'video') {
+        const currentVideos = state.slides.filter(s => s.type === 'video').length;
+        if (currentVideos >= 4) {
+          // Si hay 4 videos, eliminamos el más viejo para no romper la regla
+          const firstVideoIdx = state.slides.findIndex(s => s.type === 'video');
+          if (firstVideoIdx !== -1) deleteSlide(firstVideoIdx);
+        }
+      }
+
+      state.slides.push(slide);
+      renderQueueList();
+      broadcastSync('slide_approved', state.slides);
+    }
+
+    function rejectPendingItem(index) {
+      const item = state.pendingModeration.splice(index, 1)[0];
+      if (item && item.url) {
+        releaseMemoryBlob(item.url);
+      }
+      renderModerationList();
+      showToast('🗑️ Envío descartado.');
+    }
+
+    function clearPendingModeration() {
+      state.pendingModeration.forEach(item => {
+        if (item.url) releaseMemoryBlob(item.url);
+      });
+      state.pendingModeration = [];
+      renderModerationList();
+      showToast('🧹 Bandeja de moderación vaciada.');
+    }
+
+    /* -------------------------------------------------------------
+       RELOJ Y NOTIFICACIONES
+       ------------------------------------------------------------- */
+    function startProjectorClock() {
+      setInterval(() => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const clockEl = document.getElementById('projector-clock');
+        if (clockEl) clockEl.innerText = `${hours}:${minutes}:${seconds}`;
+      }, 1000);
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'glass-panel text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-2 transform translate-y-2 opacity-0 transition-all duration-300';
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+  </script>
 </body>
 </html>
+```
