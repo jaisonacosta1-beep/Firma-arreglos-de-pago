@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-950 text-slate-100">
 <head>
@@ -883,6 +883,17 @@
         return;
       }
 
+      // Cargar diapositivas guardadas previamente en memoria local
+      const savedSlides = localStorage.getItem('eventcast_active_slides');
+      if (savedSlides) {
+        try {
+          const parsed = JSON.parse(savedSlides);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            state.slides = parsed;
+          }
+        } catch (e) {}
+      }
+
       if (isProjectorMode) {
         state.isDedicatedProjectorLink = true;
         const adminNavbar = document.getElementById('admin-navbar');
@@ -896,6 +907,9 @@
         switchView('display');
         tryAutoFullscreen();
         setupImmediateFullscreenTriggers();
+
+        // Solicitar inmediatamente al panel administrador la lista más reciente
+        localChannel.postMessage({ action: 'request_state' });
       } else {
         switchView('admin');
       }
@@ -911,6 +925,17 @@
       localChannel.onmessage = (event) => {
         handleIncomingSync(event.data);
       };
+
+      // Escuchar cambios en almacenamiento local en caso de ser pestañas independientes
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'eventcast_active_slides' && e.newValue) {
+          try {
+            state.slides = JSON.parse(e.newValue);
+            renderQueueList();
+            renderSlide();
+          } catch (err) {}
+        }
+      });
     });
 
     function setupImmediateFullscreenTriggers() {
@@ -1335,7 +1360,7 @@
       const uploadPrompt = document.getElementById('file-upload-prompt');
 
       if (file.type.startsWith('image/')) {
-        showToast('⏳ Optimizando y comprimiendo foto...');
+        showToast('⏳ Comprimiendo foto para transmisión rápida...');
         if (uploadPrompt) uploadPrompt.innerText = `Cargando: ${file.name}...`;
 
         compressImageWithCanvas(file, (compressedDataUrl) => {
@@ -1345,7 +1370,7 @@
 
           if (uploadPrompt) uploadPrompt.innerText = `✅ Foto lista: ${file.name}`;
           updateLivePreview();
-          showToast('✅ Foto optimizada en HD (~250 KB).');
+          showToast('✅ Foto lista para proyectar.');
         });
       } else if (file.type.startsWith('video/')) {
         const maxVideoSize = 15 * 1024 * 1024; // 15 MB
@@ -1356,14 +1381,22 @@
         }
 
         if (uploadPrompt) uploadPrompt.innerText = `Cargando video: ${file.name}...`;
-        const videoBlobUrl = URL.createObjectURL(file);
-        state.tempMediaData = videoBlobUrl;
-        state.tempMediaType = 'video';
-        state.selectedAddType = 'video';
+        showToast('⏳ Leyendo video para sincronización...');
 
-        if (uploadPrompt) uploadPrompt.innerText = `✅ Video listo: ${file.name}`;
-        updateLivePreview();
-        showToast('✅ Video clip listo. Se cortará a los ' + state.videoTrimDuration + ' seg.');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          state.tempMediaData = e.target.result;
+          state.tempMediaType = 'video';
+          state.selectedAddType = 'video';
+
+          if (uploadPrompt) uploadPrompt.innerText = `✅ Video listo: ${file.name}`;
+          updateLivePreview();
+          showToast('✅ Video clip listo. Se cortará a los ' + state.videoTrimDuration + ' seg.');
+        };
+        reader.onerror = () => {
+          showToast('⚠️ Error al leer el video.');
+        };
+        reader.readAsDataURL(file);
       }
     }
 
@@ -1375,7 +1408,8 @@
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 1920;
+          // Reducción balanceada para transmisión instantánea por red o Firebase
+          const maxDim = 1280;
 
           if (width > maxDim || height > maxDim) {
             if (width > height) {
@@ -1393,15 +1427,15 @@
           ctx.drawImage(img, 0, 0, width, height);
 
           try {
-            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+            // Calidad al 60% para que pese menos de 180 KB y vuele en la sincronización
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.60);
             callback(compressedDataUrl);
           } catch (err) {
-            // Fallback si canvas falla
             callback(e.target.result);
           }
         };
         img.onerror = () => {
-          showToast('⚠️ No se pudo leer la imagen.');
+          showToast('⚠️ No se pudo decodificar la imagen.');
         };
         img.src = e.target.result;
       };
@@ -1629,7 +1663,7 @@
             showToast('🛑 Hay 4 videos activos. Selecciona cuál borrar para reemplazarlo.');
             return;
           }
-          newSlide.maxDuration = state.videoTrimDuration; // Corte asignado
+          newSlide.maxDuration = state.videoTrimDuration;
         }
       }
 
@@ -1644,17 +1678,29 @@
         state.slides.push(newSlide);
       }
 
+      // Limpieza de campos
       document.getElementById('input-message').value = '';
       document.getElementById('input-signature').value = '';
       document.getElementById('input-media-url').value = '';
       document.getElementById('input-file-media').value = '';
+      const promptText = document.getElementById('file-upload-prompt');
+      if (promptText) {
+        promptText.innerText = (type === 'video') ? "Haz clic para seleccionar Video Clip" : "Haz clic para seleccionar Foto";
+      }
       state.tempMediaData = null;
       state.tempMediaType = null;
 
       updateLivePreview();
       renderQueueList();
+      
+      // Si la cola estaba vacía o solo tenía este elemento, proyectar de inmediato
+      if (state.slides.length === 1) {
+        state.currentIndex = 0;
+        renderSlide();
+      }
+
       broadcastSync('slide_added', state.slides);
-      showToast('🚀 Publicación agregada a la proyección.');
+      showToast('🚀 Publicación agregada con éxito.');
     }
 
     /* -------------------------------------------------------------
@@ -2037,6 +2083,13 @@
        SINCRONIZACIÓN DUAL: RED LOCAL + FIREBASE
        ------------------------------------------------------------- */
     function broadcastSync(action, payload) {
+      // Guardar en almacenamiento para sincronización inmediata
+      try {
+        localStorage.setItem('eventcast_active_slides', JSON.stringify(state.slides));
+      } catch (err) {
+        console.warn('Almacenamiento lleno o no disponible:', err);
+      }
+
       const dataPackage = {
         action: action,
         slides: state.slides,
@@ -2044,11 +2097,22 @@
         timestamp: Date.now()
       };
 
-      localChannel.postMessage(dataPackage);
+      try {
+        localChannel.postMessage(dataPackage);
+      } catch (err) {
+        console.warn('Error en postMessage local:', err);
+      }
 
       if (state.isFirebaseConnected && window.firebase && firebase.database) {
         try {
-          firebase.database().ref('eventcast_live').set(dataPackage);
+          firebase.database().ref('eventcast_live').set({
+            action: action,
+            slides: state.slides,
+            currentIndex: state.currentIndex,
+            timestamp: Date.now()
+          }).catch(err => {
+            console.warn('Error al guardar en Firebase:', err);
+          });
         } catch (e) {
           console.warn('Error sincronizando Firebase:', e);
         }
@@ -2058,13 +2122,21 @@
     function handleIncomingSync(data) {
       if (!data) return;
 
+      // El proyector acaba de abrirse y pide el contenido actual a la cabina
+      if (data.action === 'request_state') {
+        if (state.activeView === 'admin' && state.slides.length > 0) {
+          broadcastSync('sync_full_state', state.slides);
+        }
+        return;
+      }
+
       // Recepción de envíos hechos por invitados desde la web (?mode=guest)
       if (data.action === 'guest_submission' && data.payload) {
         routeIncomingSlide(data.payload, data.payload.signature || 'Invitado Web', data.payload.type === 'image' ? 'foto' : 'mensaje');
         return;
       }
 
-      if (data.slides) {
+      if (data.slides && Array.isArray(data.slides)) {
         state.slides = data.slides;
       }
       if (typeof data.currentIndex === 'number') {
